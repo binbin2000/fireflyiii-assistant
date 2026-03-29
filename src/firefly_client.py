@@ -186,3 +186,39 @@ class FireflyClient:
             'transactions': [update_split],
         }
         return self._put(f'transactions/{group_id}', payload)
+
+    def delete_transaction(self, group_id: str) -> None:
+        """Permanently delete a transaction group."""
+        url = f"{self.base_url}/api/v1/transactions/{group_id}"
+        resp = self.session.delete(url, timeout=30)
+        resp.raise_for_status()
+
+    # ── Rules (automations) ───────────────────────────────────────────────────
+
+    def get_rules(self) -> list:
+        """Fetch all existing rules."""
+        data = self._get('rules', {'limit': 100})
+        return [
+            {
+                'id': r['id'],
+                'title': r['attributes'].get('title', ''),
+                'active': r['attributes'].get('active', False),
+                'description': r['attributes'].get('description', ''),
+                'trigger': r['attributes'].get('trigger', ''),
+            }
+            for r in data.get('data', [])
+        ]
+
+    def create_rule(self, payload: dict) -> dict:
+        """Create a new rule.
+
+        payload must follow the Firefly III rule schema:
+        {
+          title, trigger, triggers: [{type, value, active, stop_processing}],
+          actions: [{action, value}], active, strict, stop_processing
+        }
+        """
+        url = f"{self.base_url}/api/v1/rules"
+        resp = self.session.post(url, json=payload, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
