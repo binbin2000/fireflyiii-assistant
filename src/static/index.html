@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firefly III – Kategoriserare</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --text: #e2e8f0;
+    --text-dim: #8892a4;
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #38bdf8;
+    --radius: 10px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  .app { display: flex; flex-direction: column; height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; font-weight: 700; color: var(--primary-hover); }
+  header .meta { color: var(--text-dim); font-size: 12px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge-local   { background: #14532d; color: #86efac; }
+  .badge-cloud   { background: #1e3a5f; color: #93c5fd; }
+  .badge-none    { background: #292524; color: #a8a29e; }
+  .badge-history { background: #292524; color: #d4d4d4; }
+
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ─────────────────────────────────────────────────── */
+  .sidebar {
+    width: 340px;
+    min-width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sidebar-header h2 { font-size: 13px; font-weight: 600; }
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    transition: width 0.3s ease;
+    border-radius: 2px;
+  }
+  .txn-list { flex: 1; overflow-y: auto; }
+  .txn-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .txn-item:hover { background: var(--surface2); }
+  .txn-item.active { background: var(--surface2); border-left: 3px solid var(--primary); }
+  .txn-item.done   { opacity: 0.5; }
+  .txn-item.done .txn-desc { text-decoration: line-through; }
+  .txn-icon { font-size: 18px; flex-shrink: 0; }
+  .txn-body { flex: 1; min-width: 0; }
+  .txn-desc {
+    font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .txn-meta { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+  .txn-amount { font-weight: 600; flex-shrink: 0; font-size: 13px; }
+
+  /* ── Detail panel ────────────────────────────────────────────── */
+  .detail {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .field-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 8px 16px;
+    align-items: start;
+  }
+  .field-label { color: var(--text-dim); font-size: 12px; }
+  .field-value { font-size: 13px; word-break: break-word; }
+
+  /* Suggestion card */
+  .suggestion-card {
+    border-color: var(--primary);
+    background: rgba(99,102,241,0.06);
+  }
+  .confidence-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .confidence-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+  .conf-high { background: var(--success); }
+  .conf-mid  { background: var(--warning); }
+  .conf-low  { background: var(--danger); }
+
+  /* Edit form */
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 5px; }
+  .form-input, .form-select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--primary); }
+  .form-select option { background: var(--bg); }
+
+  /* Action buttons */
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-success { background: #166534; color: #86efac; }
+  .btn-success:hover { background: #14532d; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-ghost:hover { background: var(--surface2); }
+  .btn-danger { background: #7f1d1d; color: #fca5a5; }
+  .btn-danger:hover { background: #991b1b; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Toolbar */
+  .toolbar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* Empty / loading states */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 1000;
+  }
+  .toast {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    max-width: 300px;
+    animation: slide-in 0.2s ease;
+  }
+  .toast.success { border-color: var(--success); color: #86efac; }
+  .toast.error   { border-color: var(--danger);  color: #fca5a5; }
+  @keyframes slide-in { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: none; } }
+
+  /* Privacy note */
+  .privacy-note {
+    background: rgba(251,191,36,0.08);
+    border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #fcd34d;
+    display: flex; gap: 8px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Loading screen -->
+  <div id="loading-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;">
+    <div class="spinner"></div>
+    <p id="loading-msg" style="color:var(--text-dim);">Ansluter till Firefly III…</p>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+/* ── State ──────────────────────────────────────────────────────────────── */
+let state = {
+  transactions: [],     // [{transaction, suggestion}]
+  categories: [],
+  budgets: [],
+  aiBackend: 'none',
+  current: null,        // index of active transaction
+  pending: {},          // groupId -> {category_name, budget_name, destination_name, raw_split}
+  done: new Set(),      // groupIds that have been saved
+};
+
+/* ── API helpers ────────────────────────────────────────────────────────── */
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    headers: {'Content-Type': 'application/json'},
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/* ── Toast ──────────────────────────────────────────────────────────────── */
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+/* ── Formatting ─────────────────────────────────────────────────────────── */
+function fmtAmount(amt, currency = 'kr') {
+  return amt.toLocaleString('sv-SE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + (currency || 'kr');
+}
+function fmtDate(d) { return (d || '').slice(0, 10) || '–'; }
+function sourceLabel(src) {
+  if (src === 'ai_local') return '🔒 Lokal AI';
+  if (src === 'ai_cloud') return '☁️ Claude AI';
+  if (src === 'history')  return '📚 Historik';
+  if (src === 'manual')   return '✏️ Manuell';
+  return '–';
+}
+function sourceBadge(src) {
+  if (src === 'ai_local') return 'badge-local';
+  if (src === 'ai_cloud') return 'badge-cloud';
+  if (src === 'history')  return 'badge-history';
+  return 'badge-none';
+}
+function confClass(c) {
+  if (c >= 0.8) return 'conf-high';
+  if (c >= 0.5) return 'conf-mid';
+  return 'conf-low';
+}
+
+/* ── Render helpers ─────────────────────────────────────────────────────── */
+function renderSidebar() {
+  const total = state.transactions.length;
+  const doneCount = state.done.size;
+  const pct = total ? Math.round(doneCount / total * 100) : 0;
+
+  const items = state.transactions.map((item, i) => {
+    const t = item.transaction;
+    const id = t.group_id;
+    const isDone = state.done.has(id);
+    const hasPending = id in state.pending;
+    const icon = isDone ? '✅' : hasPending ? '🔵' : (item.suggestion.has_any ? '💡' : '❓');
+    const activeClass = state.current === i ? ' active' : '';
+    const doneClass = isDone ? ' done' : '';
+    return `
+      <div class="txn-item${activeClass}${doneClass}" onclick="selectTxn(${i})">
+        <span class="txn-icon">${icon}</span>
+        <div class="txn-body">
+          <div class="txn-desc">${esc(t.description || '–')}</div>
+          <div class="txn-meta">${fmtDate(t.date)} · ${esc(t.source_name || '')}
+            ${item.suggestion.source !== 'none' ? `· <span class="${sourceBadge(item.suggestion.source)} badge">${sourceLabel(item.suggestion.source)}</span>` : ''}
+          </div>
+        </div>
+        <span class="txn-amount">${fmtAmount(t.amount, t.currency_code)}</span>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>${total} transaktioner</h2>
+        <span style="color:var(--text-dim);font-size:12px;">${doneCount}/${total} sparade</span>
+      </div>
+      <div class="progress-bar" style="margin:0 16px 8px;">
+        <div class="progress-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="txn-list">${items || '<div class="empty-state"><p>Inga transaktioner</p></div>'}</div>
+    </div>`;
+}
+
+function renderDetail() {
+  if (state.current === null) {
+    return `<div class="detail">
+      <div class="empty-state">
+        <div class="icon">👈</div>
+        <p>Välj en transaktion i listan</p>
+      </div>
+    </div>`;
+  }
+
+  const item = state.transactions[state.current];
+  const t = item.transaction;
+  const sg = item.suggestion;
+  const currency = t.currency_code || 'kr';
+
+  const privacyNote = state.aiBackend === 'cloud'
+    ? `<div class="privacy-note">⚠️ <div>Förslaget ovan genererades av Claude API (Anthropic). Transaktionsbeskrivningen skickades till Anthropics servrar. Exakta belopp och kontonamn skickades <strong>inte</strong>.</div></div>`
+    : '';
+
+  const confPct = Math.round((sg.confidence || 0) * 100);
+  const hasSuggestion = sg.source !== 'none' && (sg.category_name || sg.budget_name || sg.destination_name);
+
+  // Edit form values (from pending if exists, else suggestion)
+  const pending = state.pending[t.group_id] || {};
+  const cat   = pending.category_name   ?? sg.category_name   ?? '';
+  const bud   = pending.budget_name     ?? sg.budget_name     ?? '';
+  const dest  = pending.destination_name ?? sg.destination_name ?? '';
+
+  const catOptions = ['', ...state.categories.map(c => c.name)]
+    .map(n => `<option value="${esc(n)}" ${n===cat?'selected':''}>${esc(n) || '– välj kategori –'}</option>`)
+    .join('');
+  const budOptions = ['', ...state.budgets.map(b => b.name)]
+    .map(n => `<option value="${esc(n)}" ${n===bud?'selected':''}>${esc(n) || '– ingen budget –'}</option>`)
+    .join('');
+
+  return `
+    <div class="detail">
+      <!-- Transaction info -->
+      <div class="card">
+        <div class="card-title">Transaktionsinfo</div>
+        <div class="field-grid">
+          <span class="field-label">Beskrivning</span>
+          <span class="field-value">${esc(t.description || '–')}</span>
+          <span class="field-label">Belopp</span>
+          <span class="field-value" style="font-weight:600;">${fmtAmount(t.amount, currency)}</span>
+          <span class="field-label">Datum</span>
+          <span class="field-value">${fmtDate(t.date)}</span>
+          <span class="field-label">Från konto</span>
+          <span class="field-value">${esc(t.source_name || '–')}</span>
+          <span class="field-label">Destination</span>
+          <span class="field-value">${esc(t.destination_name || '–')}</span>
+        </div>
+      </div>
+
+      <!-- Suggestion -->
+      ${hasSuggestion ? `
+      <div class="card suggestion-card">
+        <div class="card-title">
+          Förslag
+          <span class="badge ${sourceBadge(sg.source)}" style="margin-left:8px;">${sourceLabel(sg.source)}</span>
+          <span style="float:right;color:var(--text-dim);font-size:11px;">${confPct}% konfidens</span>
+        </div>
+        <div class="field-grid">
+          ${sg.category_name ? `<span class="field-label">Kategori</span><span class="field-value" style="color:#86efac;">${esc(sg.category_name)}</span>` : ''}
+          ${sg.budget_name   ? `<span class="field-label">Budget</span><span class="field-value" style="color:#93c5fd;">${esc(sg.budget_name)}</span>` : ''}
+          ${sg.destination_name ? `<span class="field-label">Leverantör</span><span class="field-value" style="color:#e879f9;">${esc(sg.destination_name)}</span>` : ''}
+          ${sg.reasoning     ? `<span class="field-label">Motivering</span><span class="field-value" style="color:var(--text-dim);font-style:italic;">${esc(sg.reasoning)}</span>` : ''}
+          ${sg.matched_description ? `<span class="field-label">Matchad mot</span><span class="field-value" style="color:var(--text-dim);font-size:11px;">${esc(sg.matched_description)}</span>` : ''}
+        </div>
+        <div class="confidence-bar">
+          <div class="confidence-bar-fill ${confClass(sg.confidence)}" style="width:${confPct}%"></div>
+        </div>
+      </div>` : ''}
+
+      ${privacyNote}
+
+      <!-- Edit form -->
+      <div class="card">
+        <div class="card-title">Redigera / Bekräfta</div>
+        <div class="form-group">
+          <label class="form-label">Kategori</label>
+          <select class="form-select" id="edit-cat" onchange="setPending('category_name', this.value)">
+            ${catOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Budget</label>
+          <select class="form-select" id="edit-bud" onchange="setPending('budget_name', this.value)">
+            ${budOptions}
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Leverantör (destination)</label>
+          <input class="form-input" id="edit-dest" value="${esc(dest)}"
+            oninput="setPending('destination_name', this.value)"
+            placeholder="t.ex. ICA Supermarket">
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        ${hasSuggestion ? `<button class="btn btn-success" onclick="acceptSuggestion()">✓ Godkänn förslag</button>` : ''}
+        <button class="btn btn-primary" onclick="saveCurrentEdit()">💾 Spara redigering</button>
+        <button class="btn btn-ghost" onclick="skipCurrent()">Hoppa över</button>
+      </div>
+    </div>`;
+}
+
+function render() {
+  const app = document.getElementById('app');
+  const aiLabel = {none:'Ingen AI', local:'🔒 Lokal AI', cloud:'☁️ Claude API'}[state.aiBackend] || '';
+  const aiBadge = {none:'badge-none', local:'badge-local', cloud:'badge-cloud'}[state.aiBackend] || 'badge-none';
+
+  const undone = state.transactions.filter(i => !state.done.has(i.transaction.group_id)).length;
+
+  app.innerHTML = `
+    <header>
+      <h1>🔥 Firefly III Kategoriserare</h1>
+      <span class="badge ${aiBadge}">${aiLabel || 'Mönstermatchning'}</span>
+      <span class="meta">${state.transactions.length} transaktioner</span>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <select id="mode-select" class="form-select" style="width:auto;padding:5px 8px;" onchange="loadTransactions(this.value)">
+          <option value="uncategorized">Okategoriserade</option>
+          <option value="all">Alla senaste</option>
+        </select>
+        <button class="btn btn-ghost" style="padding:6px 12px;" onclick="loadTransactions()">🔄 Ladda om</button>
+      </div>
+    </header>
+    <div class="main">
+      ${renderSidebar()}
+      ${renderDetail()}
+    </div>
+    <div class="toolbar">
+      <span style="color:var(--text-dim);font-size:12px;">${Object.keys(state.pending).length} osparade ändringar</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="acceptAll()" ${undone===0?'disabled':''}>✓ Godkänn alla förslag</button>
+        <button class="btn btn-success" onclick="saveAll()" ${Object.keys(state.pending).length===0?'disabled':''}>
+          💾 Spara alla (${Object.keys(state.pending).length})
+        </button>
+      </div>
+    </div>`;
+}
+
+/* ── Event handlers ─────────────────────────────────────────────────────── */
+function selectTxn(i) {
+  state.current = i;
+  render();
+}
+
+function setPending(field, value) {
+  if (state.current === null) return;
+  const t = state.transactions[state.current].transaction;
+  if (!state.pending[t.group_id]) {
+    state.pending[t.group_id] = {raw_split: t._raw_split || {}};
+  }
+  state.pending[t.group_id][field] = value || null;
+  // Update sidebar icon without full re-render
+  updateSidebarItem(state.current);
+}
+
+function updateSidebarItem(i) {
+  // Just re-render sidebar part to avoid losing focus on inputs
+  const sidebarEl = document.querySelector('.sidebar');
+  if (sidebarEl) {
+    const dummy = document.createElement('div');
+    dummy.innerHTML = renderSidebar();
+    sidebarEl.replaceWith(dummy.firstElementChild);
+    // Re-attach event on new element (delegated via onclick attr, so nothing needed)
+  }
+}
+
+function acceptSuggestion() {
+  if (state.current === null) return;
+  const item = state.transactions[state.current];
+  const t = item.transaction;
+  const sg = item.suggestion;
+  if (!sg || sg.source === 'none') return;
+
+  state.pending[t.group_id] = {
+    raw_split: t._raw_split || {},
+    category_name: sg.category_name || null,
+    budget_name: sg.budget_name || null,
+    destination_name: sg.destination_name || null,
+  };
+  // Move to next
+  advanceToNext();
+  render();
+  toast('Förslag godkänt – klicka "Spara alla" för att skriva till Firefly III', 'info');
+}
+
+function saveCurrentEdit() {
+  if (state.current === null) return;
+  const t = state.transactions[state.current].transaction;
+  const cat  = document.getElementById('edit-cat')?.value || null;
+  const bud  = document.getElementById('edit-bud')?.value || null;
+  const dest = document.getElementById('edit-dest')?.value || null;
+
+  state.pending[t.group_id] = {
+    raw_split: t._raw_split || {},
+    category_name: cat || null,
+    budget_name: bud || null,
+    destination_name: dest || null,
+  };
+  advanceToNext();
+  render();
+  toast('Sparad i kö – klicka "Spara alla" för att skriva till Firefly III', 'info');
+}
+
+function skipCurrent() {
+  advanceToNext();
+  render();
+}
+
+function advanceToNext() {
+  const total = state.transactions.length;
+  for (let i = state.current + 1; i < total; i++) {
+    if (!state.done.has(state.transactions[i].transaction.group_id)) {
+      state.current = i;
+      return;
+    }
+  }
+  // Wrap around
+  for (let i = 0; i < state.current; i++) {
+    if (!state.done.has(state.transactions[i].transaction.group_id)) {
+      state.current = i;
+      return;
+    }
+  }
+}
+
+function acceptAll() {
+  for (let i = 0; i < state.transactions.length; i++) {
+    const item = state.transactions[i];
+    const t = item.transaction;
+    const sg = item.suggestion;
+    if (state.done.has(t.group_id)) continue;
+    if (!sg || sg.source === 'none') continue;
+    if (!sg.category_name && !sg.budget_name && !sg.destination_name) continue;
+    state.pending[t.group_id] = {
+      raw_split: t._raw_split || {},
+      category_name: sg.category_name || null,
+      budget_name: sg.budget_name || null,
+      destination_name: sg.destination_name || null,
+    };
+  }
+  render();
+  toast(`${Object.keys(state.pending).length} förslag köade – klicka "Spara alla"`, 'info');
+}
+
+async function saveAll() {
+  const updates = Object.entries(state.pending).map(([groupId, data]) => ({
+    group_id: groupId,
+    raw_split: data.raw_split,
+    category_name: data.category_name,
+    budget_name: data.budget_name,
+    destination_name: data.destination_name,
+  }));
+
+  if (!updates.length) return;
+
+  try {
+    const results = await api('/api/transactions/batch-update', {
+      method: 'POST',
+      body: JSON.stringify({updates}),
+    });
+
+    let ok = 0, fail = 0;
+    for (const r of results) {
+      if (r.ok) {
+        state.done.add(r.group_id);
+        delete state.pending[r.group_id];
+        ok++;
+      } else {
+        fail++;
+        toast(`Fel: ${r.error}`, 'error');
+      }
+    }
+    if (ok) toast(`✅ ${ok} transaktioner uppdaterade i Firefly III`, 'success');
+    if (fail) toast(`❌ ${fail} uppdateringar misslyckades`, 'error');
+    render();
+  } catch (e) {
+    toast(`Fel: ${e.message}`, 'error');
+  }
+}
+
+/* ── Data loading ───────────────────────────────────────────────────────── */
+async function loadTransactions(mode) {
+  const modeEl = document.getElementById('mode-select');
+  const m = mode || (modeEl ? modeEl.value : 'uncategorized');
+  setLoading('Hämtar transaktioner…');
+  try {
+    const [txns, meta] = await Promise.all([
+      api(`/api/transactions?mode=${m}&limit=50`),
+      api('/api/metadata'),
+    ]);
+    state.transactions = txns.map(item => ({
+      ...item,
+      suggestion: {...item.suggestion, has_any: !!(item.suggestion.category_name || item.suggestion.budget_name || item.suggestion.destination_name)},
+    }));
+    state.categories = meta.categories;
+    state.budgets    = meta.budgets;
+    state.current    = txns.length > 0 ? 0 : null;
+    state.pending    = {};
+    state.done       = new Set();
+    document.getElementById('app').innerHTML = '';
+    document.getElementById('app').style.display = '';
+    render();
+  } catch (e) {
+    toast(`Fel: ${e.message}`, 'error');
+    setLoading(`Fel: ${e.message}`);
+  }
+}
+
+function setLoading(msg) {
+  document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading-screen').style.display = 'flex';
+  const appEl = document.getElementById('app');
+  // Keep loading screen inside app
+  appEl.innerHTML = '';
+  appEl.style.display = 'flex';
+  appEl.style.flexDirection = 'column';
+  appEl.style.alignItems = 'center';
+  appEl.style.justifyContent = 'center';
+  appEl.style.height = '100vh';
+  appEl.innerHTML = `<div class="spinner"></div><p style="color:var(--text-dim);">${esc(msg)}</p>`;
+}
+
+/* ── XSS protection ─────────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Boot ───────────────────────────────────────────────────────────────── */
+async function boot() {
+  setLoading('Initialiserar…');
+  try {
+    const info = await api('/api/init', {method: 'POST'});
+    state.aiBackend = info.ai_backend || 'none';
+    await loadTransactions('uncategorized');
+  } catch (e) {
+    setLoading(`Anslutningsfel: ${e.message} – kontrollera .env och starta om servern`);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
