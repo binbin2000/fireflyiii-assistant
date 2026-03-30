@@ -1,0 +1,19 @@
+services:
+  fireflyiii-assistant:
+    build: .
+    # image: ghcr.io/binbin2000/fireflyiii-assistant:latest  # alternativ till build: .
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - traefik_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fireflyiii-assistant.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.fireflyiii-assistant.entrypoints=websecure"
+      - "traefik.http.routers.fireflyiii-assistant.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.fireflyiii-assistant.middlewares=authelia@file"
+      - "traefik.http.services.fireflyiii-assistant.loadbalancer.server.port=8000"
+
+networks:
+  traefik_proxy:
+    external: true

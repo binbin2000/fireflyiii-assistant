@@ -3,9 +3,4 @@ uvicorn[standard]>=0.29.0
 requests>=2.31.0
 python-dotenv>=1.0.0
 rapidfuzz>=3.0.0
-
-# Valfritt: aktiveras automatiskt om ANTHROPIC_API_KEY finns i .env
 anthropic>=0.40.0
-
-# Valfritt: aktiveras automatiskt om OLLAMA_URL finns i .env (lokal AI, ingen data lämnar datorn)
-# ollama installeras separat: https://ollama.com

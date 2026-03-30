@@ -1,733 +1,574 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Firefly III – Kategoriserare</title>
-<style>
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3250;
-    --text: #e2e8f0;
-    --text-dim: #8892a4;
-    --primary: #6366f1;
-    --primary-hover: #818cf8;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --info: #38bdf8;
-    --radius: 10px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.4);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 14px;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Firefly III Kategoriserare</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f4f6f9; color: #222; }
+    header {
+      background: #1a2340; color: #fff; padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    #user-badge { font-size: 0.8rem; opacity: 0.75; }
+    nav { background: #fff; border-bottom: 1px solid #dde; display: flex; padding: 0 24px; }
+    nav button {
+      background: none; border: none; padding: 14px 20px; cursor: pointer;
+      font-size: 0.9rem; color: #555; border-bottom: 3px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    nav button.active { color: #1a2340; border-bottom-color: #1a2340; font-weight: 600; }
+    main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+    .tab { display: none; }
+    .tab.active { display: block; }
 
-  /* ── Layout ─────────────────────────────────────────────────── */
-  .app { display: flex; flex-direction: column; height: 100vh; }
+    /* Status bar */
+    #status {
+      padding: 10px 16px; border-radius: 6px; margin-bottom: 16px;
+      font-size: 0.875rem; background: #e8f0fe; color: #1a2340;
+    }
+    #status.error { background: #fdecea; color: #c0392b; }
+    #status.ok { background: #e6f9f0; color: #1a7a4a; }
 
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  header h1 { font-size: 16px; font-weight: 700; color: var(--primary-hover); }
-  header .meta { color: var(--text-dim); font-size: 12px; }
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer;
+      font-size: 0.85rem; font-weight: 500; transition: opacity 0.15s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .btn-primary { background: #1a2340; color: #fff; }
+    .btn-secondary { background: #e2e8f0; color: #333; }
+    .btn-danger { background: #e53e3e; color: #fff; }
+    .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
 
-  .badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 10px; border-radius: 20px;
-    font-size: 11px; font-weight: 600;
-  }
-  .badge-local   { background: #14532d; color: #86efac; }
-  .badge-cloud   { background: #1e3a5f; color: #93c5fd; }
-  .badge-none    { background: #292524; color: #a8a29e; }
-  .badge-history { background: #292524; color: #d4d4d4; }
+    /* Cards */
+    .card {
+      background: #fff; border-radius: 8px; border: 1px solid #dde;
+      padding: 16px; margin-bottom: 12px;
+    }
+    .card-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; margin-bottom: 10px;
+    }
+    .card-title { font-weight: 600; font-size: 0.95rem; }
+    .card-meta { font-size: 0.78rem; color: #888; margin-top: 2px; }
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+    .card-body { display: flex; gap: 12px; flex-wrap: wrap; }
 
-  .main { display: flex; flex: 1; overflow: hidden; }
+    /* Suggestion chips */
+    .chip {
+      font-size: 0.75rem; background: #eef2ff; color: #3730a3;
+      border-radius: 12px; padding: 2px 10px; display: inline-block;
+    }
+    .chip.local { background: #f0fdf4; color: #166534; }
+    .chip.cloud { background: #eff6ff; color: #1d4ed8; }
+    .chip.manual { background: #fef9c3; color: #854d0e; }
+    .chip.none { background: #f3f4f6; color: #6b7280; }
 
-  /* ── Sidebar ─────────────────────────────────────────────────── */
-  .sidebar {
-    width: 340px;
-    min-width: 260px;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .sidebar-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .sidebar-header h2 { font-size: 13px; font-weight: 600; }
-  .progress-bar {
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .progress-bar-fill {
-    height: 100%;
-    background: var(--primary);
-    transition: width 0.3s ease;
-    border-radius: 2px;
-  }
-  .txn-list { flex: 1; overflow-y: auto; }
-  .txn-item {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .txn-item:hover { background: var(--surface2); }
-  .txn-item.active { background: var(--surface2); border-left: 3px solid var(--primary); }
-  .txn-item.done   { opacity: 0.5; }
-  .txn-item.done .txn-desc { text-decoration: line-through; }
-  .txn-icon { font-size: 18px; flex-shrink: 0; }
-  .txn-body { flex: 1; min-width: 0; }
-  .txn-desc {
-    font-weight: 500;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .txn-meta { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
-  .txn-amount { font-weight: 600; flex-shrink: 0; font-size: 13px; }
+    /* Form selects */
+    select {
+      padding: 5px 8px; border: 1px solid #ccd; border-radius: 5px;
+      font-size: 0.82rem; background: #fff; cursor: pointer; min-width: 130px;
+    }
 
-  /* ── Detail panel ────────────────────────────────────────────── */
-  .detail {
-    flex: 1;
-    padding: 24px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px;
-  }
-  .card-title {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 14px;
-  }
-  .field-grid {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 8px 16px;
-    align-items: start;
-  }
-  .field-label { color: var(--text-dim); font-size: 12px; }
-  .field-value { font-size: 13px; word-break: break-word; }
+    /* Confidence badges */
+    .badge {
+      display: inline-block; border-radius: 12px; padding: 2px 10px;
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .badge-high { background: #fde8e8; color: #c0392b; }
+    .badge-medium { background: #fef3cd; color: #856404; }
+    .badge-low { background: #e2e8f0; color: #4a5568; }
 
-  /* Suggestion card */
-  .suggestion-card {
-    border-color: var(--primary);
-    background: rgba(99,102,241,0.06);
-  }
-  .confidence-bar {
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 10px;
-  }
-  .confidence-bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.4s ease;
-  }
-  .conf-high { background: var(--success); }
-  .conf-mid  { background: var(--warning); }
-  .conf-low  { background: var(--danger); }
+    /* Duplicates layout */
+    .dup-pair { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .dup-txn {
+      flex: 1; min-width: 200px; background: #f9fafb; border-radius: 6px;
+      border: 1px solid #e2e8f0; padding: 10px;
+    }
+    .dup-txn.keep { border-color: #68d391; background: #f0fff4; }
+    .dup-txn.remove { border-color: #fc8181; background: #fff5f5; }
+    .dup-txn-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #888; margin-bottom: 4px; }
 
-  /* Edit form */
-  .form-group { margin-bottom: 14px; }
-  .form-label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 5px; }
-  .form-input, .form-select {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    padding: 8px 10px;
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .form-input:focus, .form-select:focus { border-color: var(--primary); }
-  .form-select option { background: var(--bg); }
+    /* Rules list */
+    .rule-row { display: flex; align-items: center; gap: 10px; padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; }
+    .rule-row:last-child { border-bottom: none; }
+    .rule-active { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .rule-active.on { background: #48bb78; }
+    .rule-active.off { background: #cbd5e0; }
 
-  /* Action buttons */
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: none;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
-  }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary { background: var(--primary); color: white; }
-  .btn-primary:hover { background: var(--primary-hover); }
-  .btn-success { background: #166534; color: #86efac; }
-  .btn-success:hover { background: #14532d; }
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-  }
-  .btn-ghost:hover { background: var(--surface2); }
-  .btn-danger { background: #7f1d1d; color: #fca5a5; }
-  .btn-danger:hover { background: #991b1b; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* Toolbar */
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .toolbar select { min-width: 160px; }
 
-  /* Toolbar */
-  .toolbar {
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
+    /* Progress text */
+    .progress-text { font-size: 0.8rem; color: #666; }
 
-  /* Empty / loading states */
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-dim);
-  }
-  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
-  .spinner {
-    width: 32px; height: 32px;
-    border: 3px solid var(--border);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 12px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+    /* Empty state */
+    .empty { text-align: center; padding: 48px 0; color: #aaa; font-size: 0.9rem; }
 
-  /* Toast */
-  .toast-container {
-    position: fixed;
-    bottom: 20px; right: 20px;
-    display: flex; flex-direction: column; gap: 8px;
-    z-index: 1000;
-  }
-  .toast {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 13px;
-    max-width: 300px;
-    animation: slide-in 0.2s ease;
-  }
-  .toast.success { border-color: var(--success); color: #86efac; }
-  .toast.error   { border-color: var(--danger);  color: #fca5a5; }
-  @keyframes slide-in { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: none; } }
-
-  /* Privacy note */
-  .privacy-note {
-    background: rgba(251,191,36,0.08);
-    border: 1px solid rgba(251,191,36,0.3);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 12px;
-    color: #fcd34d;
-    display: flex; gap: 8px;
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-</style>
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor;
+      border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite;
+    }
+  </style>
 </head>
 <body>
-<div class="app" id="app">
-  <!-- Loading screen -->
-  <div id="loading-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;">
-    <div class="spinner"></div>
-    <p id="loading-msg" style="color:var(--text-dim);">Ansluter till Firefly III…</p>
-  </div>
-</div>
 
-<div class="toast-container" id="toasts"></div>
+<header>
+  <h1>Firefly III Kategoriserare</h1>
+  <span id="user-badge">Laddar...</span>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('tab-cat', this)">Kategorisera</button>
+  <button onclick="showTab('tab-dup', this)">Dubbletter</button>
+  <button onclick="showTab('tab-rules', this)">Regler</button>
+</nav>
+
+<main>
+  <div id="status">Ansluter till Firefly III…</div>
+
+  <!-- ── KATEGORISERA ────────────────────────────────────────── -->
+  <div id="tab-cat" class="tab active">
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-load" onclick="loadTransactions()">
+        Hämta transaktioner
+      </button>
+      <button class="btn btn-secondary" id="btn-save" onclick="saveAll()" disabled>
+        Spara alla
+      </button>
+      <select id="mode-select">
+        <option value="uncategorized">Okategoriserade</option>
+        <option value="all">Alla</option>
+      </select>
+      <span class="progress-text" id="progress-text"></span>
+    </div>
+    <div id="txn-list"></div>
+  </div>
+
+  <!-- ── DUBBLETTER ─────────────────────────────────────────── -->
+  <div id="tab-dup" class="tab">
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="loadDuplicates()">
+        Sök dubbletter
+      </button>
+      <select id="dup-days">
+        <option value="30">Senaste 30 dagarna</option>
+        <option value="60">Senaste 60 dagarna</option>
+        <option value="90">Senaste 90 dagarna</option>
+      </select>
+    </div>
+    <div id="dup-list"></div>
+  </div>
+
+  <!-- ── REGLER ─────────────────────────────────────────────── -->
+  <div id="tab-rules" class="tab">
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="loadRules()">Uppdatera regler</button>
+      <button class="btn btn-secondary" id="btn-create-rules" onclick="createRules()" disabled>
+        Skapa regler för sparade
+      </button>
+    </div>
+    <div id="rules-list"></div>
+  </div>
+</main>
 
 <script>
-/* ── State ──────────────────────────────────────────────────────────────── */
-let state = {
-  transactions: [],     // [{transaction, suggestion}]
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
   categories: [],
   budgets: [],
-  aiBackend: 'none',
-  current: null,        // index of active transaction
-  pending: {},          // groupId -> {category_name, budget_name, destination_name, raw_split}
-  done: new Set(),      // groupIds that have been saved
+  pending: {},    // group_id → {category_name, budget_name, destination_name}
+  done: new Set() // group_ids that have been saved
 };
 
-/* ── API helpers ────────────────────────────────────────────────────────── */
-async function api(path, options = {}) {
-  const res = await fetch(path, {
-    headers: {'Content-Type': 'application/json'},
-    ...options,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function boot() {
+  // Fetch user identity (injected by Authelia via Traefik forwardAuth)
+  try {
+    const me = await apiFetch('/api/me');
+    document.getElementById('user-badge').textContent =
+      me.name || me.user || 'Inloggad';
+  } catch {
+    document.getElementById('user-badge').textContent = 'Inte inloggad';
   }
-  return res.json();
+
+  // Initialise backend (connect to Firefly III, build history index)
+  setStatus('Ansluter och hämtar historik…');
+  try {
+    const info = await apiFetch('/api/init', {method: 'POST'});
+    setStatus(
+      `Klar. ${info.categories} kategorier, ${info.budgets} budgetar, ` +
+      `${info.history} historiska transaktioner. AI: ${info.ai_backend}.`,
+      'ok'
+    );
+  } catch (e) {
+    setStatus('Anslutningsfel: ' + e.message, 'error');
+    return;
+  }
+
+  // Load metadata for dropdowns
+  try {
+    const meta = await apiFetch('/api/metadata');
+    state.categories = meta.categories || [];
+    state.budgets    = meta.budgets    || [];
+  } catch {}
 }
 
-/* ── Toast ──────────────────────────────────────────────────────────────── */
-function toast(msg, type = 'info') {
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setStatus(msg, cls = '') {
+  const el = document.getElementById('status');
   el.textContent = msg;
-  document.getElementById('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  el.className = cls;
 }
 
-/* ── Formatting ─────────────────────────────────────────────────────────── */
-function fmtAmount(amt, currency = 'kr') {
-  return amt.toLocaleString('sv-SE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + (currency || 'kr');
-}
-function fmtDate(d) { return (d || '').slice(0, 10) || '–'; }
-function sourceLabel(src) {
-  if (src === 'ai_local') return '🔒 Lokal AI';
-  if (src === 'ai_cloud') return '☁️ Claude AI';
-  if (src === 'history')  return '📚 Historik';
-  if (src === 'manual')   return '✏️ Manuell';
-  return '–';
-}
-function sourceBadge(src) {
-  if (src === 'ai_local') return 'badge-local';
-  if (src === 'ai_cloud') return 'badge-cloud';
-  if (src === 'history')  return 'badge-history';
-  return 'badge-none';
-}
-function confClass(c) {
-  if (c >= 0.8) return 'conf-high';
-  if (c >= 0.5) return 'conf-mid';
-  return 'conf-low';
-}
-
-/* ── Render helpers ─────────────────────────────────────────────────────── */
-function renderSidebar() {
-  const total = state.transactions.length;
-  const doneCount = state.done.size;
-  const pct = total ? Math.round(doneCount / total * 100) : 0;
-
-  const items = state.transactions.map((item, i) => {
-    const t = item.transaction;
-    const id = t.group_id;
-    const isDone = state.done.has(id);
-    const hasPending = id in state.pending;
-    const icon = isDone ? '✅' : hasPending ? '🔵' : (item.suggestion.has_any ? '💡' : '❓');
-    const activeClass = state.current === i ? ' active' : '';
-    const doneClass = isDone ? ' done' : '';
-    return `
-      <div class="txn-item${activeClass}${doneClass}" onclick="selectTxn(${i})">
-        <span class="txn-icon">${icon}</span>
-        <div class="txn-body">
-          <div class="txn-desc">${esc(t.description || '–')}</div>
-          <div class="txn-meta">${fmtDate(t.date)} · ${esc(t.source_name || '')}
-            ${item.suggestion.source !== 'none' ? `· <span class="${sourceBadge(item.suggestion.source)} badge">${sourceLabel(item.suggestion.source)}</span>` : ''}
-          </div>
-        </div>
-        <span class="txn-amount">${fmtAmount(t.amount, t.currency_code)}</span>
-      </div>`;
-  }).join('');
-
-  return `
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <h2>${total} transaktioner</h2>
-        <span style="color:var(--text-dim);font-size:12px;">${doneCount}/${total} sparade</span>
-      </div>
-      <div class="progress-bar" style="margin:0 16px 8px;">
-        <div class="progress-bar-fill" style="width:${pct}%"></div>
-      </div>
-      <div class="txn-list">${items || '<div class="empty-state"><p>Inga transaktioner</p></div>'}</div>
-    </div>`;
-}
-
-function renderDetail() {
-  if (state.current === null) {
-    return `<div class="detail">
-      <div class="empty-state">
-        <div class="icon">👈</div>
-        <p>Välj en transaktion i listan</p>
-      </div>
-    </div>`;
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, {
+    headers: {'Content-Type': 'application/json', ...(opts.headers || {})},
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    throw new Error(j.detail || `HTTP ${r.status}`);
   }
-
-  const item = state.transactions[state.current];
-  const t = item.transaction;
-  const sg = item.suggestion;
-  const currency = t.currency_code || 'kr';
-
-  const privacyNote = state.aiBackend === 'cloud'
-    ? `<div class="privacy-note">⚠️ <div>Förslaget ovan genererades av Claude API (Anthropic). Transaktionsbeskrivningen skickades till Anthropics servrar. Exakta belopp och kontonamn skickades <strong>inte</strong>.</div></div>`
-    : '';
-
-  const confPct = Math.round((sg.confidence || 0) * 100);
-  const hasSuggestion = sg.source !== 'none' && (sg.category_name || sg.budget_name || sg.destination_name);
-
-  // Edit form values (from pending if exists, else suggestion)
-  const pending = state.pending[t.group_id] || {};
-  const cat   = pending.category_name   ?? sg.category_name   ?? '';
-  const bud   = pending.budget_name     ?? sg.budget_name     ?? '';
-  const dest  = pending.destination_name ?? sg.destination_name ?? '';
-
-  const catOptions = ['', ...state.categories.map(c => c.name)]
-    .map(n => `<option value="${esc(n)}" ${n===cat?'selected':''}>${esc(n) || '– välj kategori –'}</option>`)
-    .join('');
-  const budOptions = ['', ...state.budgets.map(b => b.name)]
-    .map(n => `<option value="${esc(n)}" ${n===bud?'selected':''}>${esc(n) || '– ingen budget –'}</option>`)
-    .join('');
-
-  return `
-    <div class="detail">
-      <!-- Transaction info -->
-      <div class="card">
-        <div class="card-title">Transaktionsinfo</div>
-        <div class="field-grid">
-          <span class="field-label">Beskrivning</span>
-          <span class="field-value">${esc(t.description || '–')}</span>
-          <span class="field-label">Belopp</span>
-          <span class="field-value" style="font-weight:600;">${fmtAmount(t.amount, currency)}</span>
-          <span class="field-label">Datum</span>
-          <span class="field-value">${fmtDate(t.date)}</span>
-          <span class="field-label">Från konto</span>
-          <span class="field-value">${esc(t.source_name || '–')}</span>
-          <span class="field-label">Destination</span>
-          <span class="field-value">${esc(t.destination_name || '–')}</span>
-        </div>
-      </div>
-
-      <!-- Suggestion -->
-      ${hasSuggestion ? `
-      <div class="card suggestion-card">
-        <div class="card-title">
-          Förslag
-          <span class="badge ${sourceBadge(sg.source)}" style="margin-left:8px;">${sourceLabel(sg.source)}</span>
-          <span style="float:right;color:var(--text-dim);font-size:11px;">${confPct}% konfidens</span>
-        </div>
-        <div class="field-grid">
-          ${sg.category_name ? `<span class="field-label">Kategori</span><span class="field-value" style="color:#86efac;">${esc(sg.category_name)}</span>` : ''}
-          ${sg.budget_name   ? `<span class="field-label">Budget</span><span class="field-value" style="color:#93c5fd;">${esc(sg.budget_name)}</span>` : ''}
-          ${sg.destination_name ? `<span class="field-label">Leverantör</span><span class="field-value" style="color:#e879f9;">${esc(sg.destination_name)}</span>` : ''}
-          ${sg.reasoning     ? `<span class="field-label">Motivering</span><span class="field-value" style="color:var(--text-dim);font-style:italic;">${esc(sg.reasoning)}</span>` : ''}
-          ${sg.matched_description ? `<span class="field-label">Matchad mot</span><span class="field-value" style="color:var(--text-dim);font-size:11px;">${esc(sg.matched_description)}</span>` : ''}
-        </div>
-        <div class="confidence-bar">
-          <div class="confidence-bar-fill ${confClass(sg.confidence)}" style="width:${confPct}%"></div>
-        </div>
-      </div>` : ''}
-
-      ${privacyNote}
-
-      <!-- Edit form -->
-      <div class="card">
-        <div class="card-title">Redigera / Bekräfta</div>
-        <div class="form-group">
-          <label class="form-label">Kategori</label>
-          <select class="form-select" id="edit-cat" onchange="setPending('category_name', this.value)">
-            ${catOptions}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Budget</label>
-          <select class="form-select" id="edit-bud" onchange="setPending('budget_name', this.value)">
-            ${budOptions}
-          </select>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Leverantör (destination)</label>
-          <input class="form-input" id="edit-dest" value="${esc(dest)}"
-            oninput="setPending('destination_name', this.value)"
-            placeholder="t.ex. ICA Supermarket">
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="actions">
-        ${hasSuggestion ? `<button class="btn btn-success" onclick="acceptSuggestion()">✓ Godkänn förslag</button>` : ''}
-        <button class="btn btn-primary" onclick="saveCurrentEdit()">💾 Spara redigering</button>
-        <button class="btn btn-ghost" onclick="skipCurrent()">Hoppa över</button>
-      </div>
-    </div>`;
+  return r.json();
 }
 
-function render() {
-  const app = document.getElementById('app');
-  const aiLabel = {none:'Ingen AI', local:'🔒 Lokal AI', cloud:'☁️ Claude API'}[state.aiBackend] || '';
-  const aiBadge = {none:'badge-none', local:'badge-local', cloud:'badge-cloud'}[state.aiBackend] || 'badge-none';
-
-  const undone = state.transactions.filter(i => !state.done.has(i.transaction.group_id)).length;
-
-  app.innerHTML = `
-    <header>
-      <h1>🔥 Firefly III Kategoriserare</h1>
-      <span class="badge ${aiBadge}">${aiLabel || 'Mönstermatchning'}</span>
-      <span class="meta">${state.transactions.length} transaktioner</span>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-        <select id="mode-select" class="form-select" style="width:auto;padding:5px 8px;" onchange="loadTransactions(this.value)">
-          <option value="uncategorized">Okategoriserade</option>
-          <option value="all">Alla senaste</option>
-        </select>
-        <button class="btn btn-ghost" style="padding:6px 12px;" onclick="loadTransactions()">🔄 Ladda om</button>
-      </div>
-    </header>
-    <div class="main">
-      ${renderSidebar()}
-      ${renderDetail()}
-    </div>
-    <div class="toolbar">
-      <span style="color:var(--text-dim);font-size:12px;">${Object.keys(state.pending).length} osparade ändringar</span>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" onclick="acceptAll()" ${undone===0?'disabled':''}>✓ Godkänn alla förslag</button>
-        <button class="btn btn-success" onclick="saveAll()" ${Object.keys(state.pending).length===0?'disabled':''}>
-          💾 Spara alla (${Object.keys(state.pending).length})
-        </button>
-      </div>
-    </div>`;
+function showTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
 }
 
-/* ── Event handlers ─────────────────────────────────────────────────────── */
-function selectTxn(i) {
-  state.current = i;
-  render();
+function categoryOptions(selected) {
+  const blank = `<option value="">— ingen —</option>`;
+  return blank + state.categories.map(c =>
+    `<option value="${esc(c.name)}" ${c.name === selected ? 'selected' : ''}>${esc(c.name)}</option>`
+  ).join('');
 }
 
-function setPending(field, value) {
-  if (state.current === null) return;
-  const t = state.transactions[state.current].transaction;
-  if (!state.pending[t.group_id]) {
-    state.pending[t.group_id] = {raw_split: t._raw_split || {}};
-  }
-  state.pending[t.group_id][field] = value || null;
-  // Update sidebar icon without full re-render
-  updateSidebarItem(state.current);
+function budgetOptions(selected) {
+  const blank = `<option value="">— ingen —</option>`;
+  return blank + state.budgets.map(b =>
+    `<option value="${esc(b.name)}" ${b.name === selected ? 'selected' : ''}>${esc(b.name)}</option>`
+  ).join('');
 }
 
-function updateSidebarItem(i) {
-  // Just re-render sidebar part to avoid losing focus on inputs
-  const sidebarEl = document.querySelector('.sidebar');
-  if (sidebarEl) {
-    const dummy = document.createElement('div');
-    dummy.innerHTML = renderSidebar();
-    sidebarEl.replaceWith(dummy.firstElementChild);
-    // Re-attach event on new element (delegated via onclick attr, so nothing needed)
-  }
-}
-
-function acceptSuggestion() {
-  if (state.current === null) return;
-  const item = state.transactions[state.current];
-  const t = item.transaction;
-  const sg = item.suggestion;
-  if (!sg || sg.source === 'none') return;
-
-  state.pending[t.group_id] = {
-    raw_split: t._raw_split || {},
-    category_name: sg.category_name || null,
-    budget_name: sg.budget_name || null,
-    destination_name: sg.destination_name || null,
-  };
-  // Move to next
-  advanceToNext();
-  render();
-  toast('Förslag godkänt – klicka "Spara alla" för att skriva till Firefly III', 'info');
-}
-
-function saveCurrentEdit() {
-  if (state.current === null) return;
-  const t = state.transactions[state.current].transaction;
-  const cat  = document.getElementById('edit-cat')?.value || null;
-  const bud  = document.getElementById('edit-bud')?.value || null;
-  const dest = document.getElementById('edit-dest')?.value || null;
-
-  state.pending[t.group_id] = {
-    raw_split: t._raw_split || {},
-    category_name: cat || null,
-    budget_name: bud || null,
-    destination_name: dest || null,
-  };
-  advanceToNext();
-  render();
-  toast('Sparad i kö – klicka "Spara alla" för att skriva till Firefly III', 'info');
-}
-
-function skipCurrent() {
-  advanceToNext();
-  render();
-}
-
-function advanceToNext() {
-  const total = state.transactions.length;
-  for (let i = state.current + 1; i < total; i++) {
-    if (!state.done.has(state.transactions[i].transaction.group_id)) {
-      state.current = i;
-      return;
-    }
-  }
-  // Wrap around
-  for (let i = 0; i < state.current; i++) {
-    if (!state.done.has(state.transactions[i].transaction.group_id)) {
-      state.current = i;
-      return;
-    }
-  }
-}
-
-function acceptAll() {
-  for (let i = 0; i < state.transactions.length; i++) {
-    const item = state.transactions[i];
-    const t = item.transaction;
-    const sg = item.suggestion;
-    if (state.done.has(t.group_id)) continue;
-    if (!sg || sg.source === 'none') continue;
-    if (!sg.category_name && !sg.budget_name && !sg.destination_name) continue;
-    state.pending[t.group_id] = {
-      raw_split: t._raw_split || {},
-      category_name: sg.category_name || null,
-      budget_name: sg.budget_name || null,
-      destination_name: sg.destination_name || null,
-    };
-  }
-  render();
-  toast(`${Object.keys(state.pending).length} förslag köade – klicka "Spara alla"`, 'info');
-}
-
-async function saveAll() {
-  const updates = Object.entries(state.pending).map(([groupId, data]) => ({
-    group_id: groupId,
-    raw_split: data.raw_split,
-    category_name: data.category_name,
-    budget_name: data.budget_name,
-    destination_name: data.destination_name,
-  }));
-
-  if (!updates.length) return;
-
-  try {
-    const results = await api('/api/transactions/batch-update', {
-      method: 'POST',
-      body: JSON.stringify({updates}),
-    });
-
-    let ok = 0, fail = 0;
-    for (const r of results) {
-      if (r.ok) {
-        state.done.add(r.group_id);
-        delete state.pending[r.group_id];
-        ok++;
-      } else {
-        fail++;
-        toast(`Fel: ${r.error}`, 'error');
-      }
-    }
-    if (ok) toast(`✅ ${ok} transaktioner uppdaterade i Firefly III`, 'success');
-    if (fail) toast(`❌ ${fail} uppdateringar misslyckades`, 'error');
-    render();
-  } catch (e) {
-    toast(`Fel: ${e.message}`, 'error');
-  }
-}
-
-/* ── Data loading ───────────────────────────────────────────────────────── */
-async function loadTransactions(mode) {
-  const modeEl = document.getElementById('mode-select');
-  const m = mode || (modeEl ? modeEl.value : 'uncategorized');
-  setLoading('Hämtar transaktioner…');
-  try {
-    const [txns, meta] = await Promise.all([
-      api(`/api/transactions?mode=${m}&limit=50`),
-      api('/api/metadata'),
-    ]);
-    state.transactions = txns.map(item => ({
-      ...item,
-      suggestion: {...item.suggestion, has_any: !!(item.suggestion.category_name || item.suggestion.budget_name || item.suggestion.destination_name)},
-    }));
-    state.categories = meta.categories;
-    state.budgets    = meta.budgets;
-    state.current    = txns.length > 0 ? 0 : null;
-    state.pending    = {};
-    state.done       = new Set();
-    document.getElementById('app').innerHTML = '';
-    document.getElementById('app').style.display = '';
-    render();
-  } catch (e) {
-    toast(`Fel: ${e.message}`, 'error');
-    setLoading(`Fel: ${e.message}`);
-  }
-}
-
-function setLoading(msg) {
-  document.getElementById('loading-msg').textContent = msg;
-  document.getElementById('loading-screen').style.display = 'flex';
-  const appEl = document.getElementById('app');
-  // Keep loading screen inside app
-  appEl.innerHTML = '';
-  appEl.style.display = 'flex';
-  appEl.style.flexDirection = 'column';
-  appEl.style.alignItems = 'center';
-  appEl.style.justifyContent = 'center';
-  appEl.style.height = '100vh';
-  appEl.innerHTML = `<div class="spinner"></div><p style="color:var(--text-dim);">${esc(msg)}</p>`;
-}
-
-/* ── XSS protection ─────────────────────────────────────────────────────── */
 function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-/* ── Boot ───────────────────────────────────────────────────────────────── */
-async function boot() {
-  setLoading('Initialiserar…');
+function chipClass(source) {
+  return {history: 'local', ai_local: 'local', ai_cloud: 'cloud', manual: 'manual'}[source] ?? 'none';
+}
+
+function sourceLabel(source) {
+  return {history: 'Historik', ai_local: 'AI lokal', ai_cloud: 'AI moln',
+          manual: 'Manuell', none: 'Inget'}[source] ?? source;
+}
+
+function updateProgress() {
+  const total = Object.keys(state.pending).length;
+  const done  = state.done.size;
+  const el = document.getElementById('progress-text');
+  el.textContent = total ? `${done} sparade av ${total + done} totalt` : '';
+  document.getElementById('btn-save').disabled = total === 0;
+  document.getElementById('btn-create-rules').disabled = state.done.size === 0;
+}
+
+// ── Tab: Kategorisera ─────────────────────────────────────────────────────────
+async function loadTransactions() {
+  const btn  = document.getElementById('btn-load');
+  const mode = document.getElementById('mode-select').value;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Hämtar…';
+  setStatus('Hämtar transaktioner…');
   try {
-    const info = await api('/api/init', {method: 'POST'});
-    state.aiBackend = info.ai_backend || 'none';
-    await loadTransactions('uncategorized');
+    const items = await apiFetch(`/api/transactions?mode=${mode}&limit=50`);
+    state.pending = {};
+    state.done.clear();
+    renderTransactions(items);
+    setStatus(`${items.length} transaktioner hämtade.`, 'ok');
   } catch (e) {
-    setLoading(`Anslutningsfel: ${e.message} – kontrollera .env och starta om servern`);
+    setStatus('Fel: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Hämta transaktioner';
   }
 }
 
+function renderTransactions(items) {
+  const list = document.getElementById('txn-list');
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">Inga transaktioner hittades.</div>';
+    updateProgress();
+    return;
+  }
+
+  // Pre-populate pending state from suggestions
+  items.forEach(({transaction: t, suggestion: s}) => {
+    state.pending[t.group_id] = {
+      category_name:   s.category_name   || t.category_name   || '',
+      budget_name:     s.budget_name     || t.budget_name     || '',
+      destination_name: s.destination_name || t.destination_name || '',
+    };
+  });
+
+  list.innerHTML = items.map(({transaction: t, suggestion: s}) => {
+    const p = state.pending[t.group_id];
+    const src = chipClass(s.source || 'none');
+    const amount = Number(t.amount).toLocaleString('sv-SE', {minimumFractionDigits: 2}) + ' ' + (t.currency_code || 'kr');
+    const date   = (t.date || '').slice(0, 10);
+    return `
+    <div class="card" id="card-${t.group_id}">
+      <div class="card-header">
+        <div>
+          <div class="card-title">${esc(t.description)}</div>
+          <div class="card-meta">${esc(t.source_name)} → ${esc(t.destination_name)} &nbsp;·&nbsp; ${amount} &nbsp;·&nbsp; ${date}</div>
+          ${s.reasoning ? `<div class="card-meta" style="margin-top:4px;font-style:italic">${esc(s.reasoning)}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+          <span class="chip ${src}">${sourceLabel(s.source)}</span>
+          ${s.confidence ? `<span class="chip none">${Math.round(s.confidence * 100)}%</span>` : ''}
+        </div>
+      </div>
+      <div class="card-body">
+        <label style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">
+          Kategori
+          <select onchange="updatePending('${t.group_id}','category_name',this.value)">
+            ${categoryOptions(p.category_name)}
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">
+          Budget
+          <select onchange="updatePending('${t.group_id}','budget_name',this.value)">
+            ${budgetOptions(p.budget_name)}
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">
+          Leverantör
+          <input type="text" value="${esc(p.destination_name)}"
+            oninput="updatePending('${t.group_id}','destination_name',this.value)"
+            style="padding:5px 8px;border:1px solid #ccd;border-radius:5px;font-size:0.82rem;width:150px" />
+        </label>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveSingle('${t.group_id}')">Spara</button>
+        <button class="btn btn-secondary btn-sm" onclick="skipSingle('${t.group_id}')">Hoppa över</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateProgress();
+}
+
+function updatePending(gid, field, value) {
+  if (!state.pending[gid]) state.pending[gid] = {};
+  state.pending[gid][field] = value;
+}
+
+async function saveSingle(gid) {
+  const card = document.getElementById('card-' + gid);
+  card.style.opacity = '0.5';
+  try {
+    await apiFetch('/api/transactions/batch-update', {
+      method: 'POST',
+      body: {updates: [{group_id: gid, ...state.pending[gid]}]},
+    });
+    delete state.pending[gid];
+    state.done.add(gid);
+    card.remove();
+    updateProgress();
+  } catch (e) {
+    card.style.opacity = '1';
+    setStatus('Fel vid sparning: ' + e.message, 'error');
+  }
+}
+
+function skipSingle(gid) {
+  delete state.pending[gid];
+  document.getElementById('card-' + gid)?.remove();
+  updateProgress();
+}
+
+async function saveAll() {
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Sparar…';
+  const updates = Object.entries(state.pending).map(([gid, p]) => ({group_id: gid, ...p}));
+  try {
+    const results = await apiFetch('/api/transactions/batch-update', {
+      method: 'POST', body: {updates},
+    });
+    const ok = results.filter(r => r.ok).map(r => r.group_id);
+    ok.forEach(gid => {
+      delete state.pending[gid];
+      state.done.add(gid);
+      document.getElementById('card-' + gid)?.remove();
+    });
+    const failed = results.filter(r => !r.ok);
+    if (failed.length) {
+      setStatus(`${ok.length} sparade, ${failed.length} misslyckades.`, 'error');
+    } else {
+      setStatus(`${ok.length} transaktioner sparade.`, 'ok');
+    }
+  } catch (e) {
+    setStatus('Fel: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Spara alla';
+    updateProgress();
+  }
+}
+
+// ── Tab: Dubbletter ───────────────────────────────────────────────────────────
+async function loadDuplicates() {
+  const days = document.getElementById('dup-days').value;
+  setStatus('Söker efter dubbletter…');
+  const list = document.getElementById('dup-list');
+  list.innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+  try {
+    const groups = await apiFetch(`/api/duplicates?days=${days}`);
+    renderDuplicates(groups);
+    setStatus(`${groups.length} möjliga dubblettpar hittade.`, groups.length ? '' : 'ok');
+  } catch (e) {
+    setStatus('Fel: ' + e.message, 'error');
+    list.innerHTML = '';
+  }
+}
+
+function renderDuplicates(groups) {
+  const list = document.getElementById('dup-list');
+  if (!groups.length) {
+    list.innerHTML = '<div class="empty">Inga dubbletter hittade.</div>';
+    return;
+  }
+  list.innerHTML = groups.map((g, i) => {
+    const [a, b] = g.transactions;
+    const badgeClass = {high: 'badge-high', medium: 'badge-medium', low: 'badge-low'}[g.confidence];
+    const confLabel  = {high: 'Hög', medium: 'Medel', low: 'Låg'}[g.confidence];
+    return `
+    <div class="card" id="dup-${i}">
+      <div class="card-header">
+        <div>
+          <div class="card-title">${esc(a.description)}</div>
+          <div class="card-meta">${g.delta_days} dagars skillnad &nbsp;·&nbsp; ${Number(a.amount).toLocaleString('sv-SE',{minimumFractionDigits:2})} ${a.currency_code||'kr'}</div>
+        </div>
+        <span class="badge ${badgeClass}">${confLabel} sannolikhet</span>
+      </div>
+      <div class="dup-pair">
+        ${dupCard(a, 'Behåll')}
+        ${dupCard(b, 'Möjlig dubblett')}
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-danger btn-sm"
+          onclick="resolveDup('${a.group_id}','${b.group_id}','dup-${i}')">
+          Ta bort transaktionen till höger
+        </button>
+        <button class="btn btn-danger btn-sm"
+          onclick="resolveDup('${b.group_id}','${a.group_id}','dup-${i}')">
+          Ta bort transaktionen till vänster
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dup-${i}').remove()">
+          Hoppa över
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function dupCard(t, label) {
+  return `
+  <div class="dup-txn">
+    <div class="dup-txn-label">${label}</div>
+    <div style="font-weight:600;font-size:0.88rem">${esc(t.description)}</div>
+    <div style="font-size:0.78rem;color:#666;margin-top:3px">
+      ${(t.date||'').slice(0,10)} &nbsp;·&nbsp;
+      ${Number(t.amount).toLocaleString('sv-SE',{minimumFractionDigits:2})} ${t.currency_code||'kr'}
+    </div>
+    ${t.category_name ? `<div style="font-size:0.75rem;color:#555;margin-top:3px">📂 ${esc(t.category_name)}</div>` : ''}
+  </div>`;
+}
+
+async function resolveDup(keepId, deleteId, cardId) {
+  const card = document.getElementById(cardId);
+  card.style.opacity = '0.5';
+  try {
+    await apiFetch('/api/duplicates/resolve', {
+      method: 'POST',
+      body: {keep_group_id: keepId, delete_group_id: deleteId},
+    });
+    card.remove();
+    setStatus('Dubblett borttagen.', 'ok');
+  } catch (e) {
+    card.style.opacity = '1';
+    setStatus('Fel: ' + e.message, 'error');
+  }
+}
+
+// ── Tab: Regler ───────────────────────────────────────────────────────────────
+async function loadRules() {
+  setStatus('Hämtar regler…');
+  const list = document.getElementById('rules-list');
+  list.innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+  try {
+    const rules = await apiFetch('/api/rules');
+    renderRules(rules);
+    setStatus(`${rules.length} regler hämtade.`, 'ok');
+  } catch (e) {
+    setStatus('Fel: ' + e.message, 'error');
+    list.innerHTML = '';
+  }
+}
+
+function renderRules(rules) {
+  const list = document.getElementById('rules-list');
+  if (!rules.length) {
+    list.innerHTML = '<div class="empty">Inga regler skapade ännu.</div>';
+    return;
+  }
+  list.innerHTML = `<div class="card">${rules.map(r => `
+    <div class="rule-row">
+      <span class="rule-active ${r.active ? 'on' : 'off'}" title="${r.active ? 'Aktiv' : 'Inaktiv'}"></span>
+      <span style="flex:1">${esc(r.title)}</span>
+      <span style="font-size:0.75rem;color:#888">${esc(r.trigger)}</span>
+    </div>`).join('')}
+  </div>`;
+}
+
+async function createRules() {
+  if (!state.done.size) return;
+  const btn = document.getElementById('btn-create-rules');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Skapar…';
+  try {
+    const res = await apiFetch('/api/rules/create', {
+      method: 'POST',
+      body: {group_ids: [...state.done]},
+    });
+    setStatus(
+      `${res.created.length} regler skapade, ${res.skipped.length} hoppade över, ${res.errors.length} fel.`,
+      res.errors.length ? 'error' : 'ok'
+    );
+    await loadRules();
+  } catch (e) {
+    setStatus('Fel: ' + e.message, 'error');
+  } finally {
+    btn.disabled = state.done.size === 0;
+    btn.textContent = 'Skapa regler för sparade';
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 boot();
 </script>
 </body>
