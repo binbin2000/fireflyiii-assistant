@@ -192,8 +192,8 @@ const state = {
 };
 
 function normalizeName(s) {
-  const t = String(s || '').trim();
-  return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
+  return String(s || '').trim().toLowerCase()
+    .replace(/(?:^|\s)\S/g, c => c.toUpperCase());
 }
 
 function updateDestinationList() {
