@@ -133,7 +133,12 @@ def init():
 
 @app.get("/api/metadata")
 def metadata():
-    return {"categories": _S.get("categories", []), "budgets": _S.get("budgets", [])}
+    destinations = sorted({
+        t["destination_name"] for t in _S.get("history", [])
+        if t.get("destination_name")
+    })
+    return {"categories": _S.get("categories", []), "budgets": _S.get("budgets", []),
+            "destinations": destinations}
 
 @app.get("/api/transactions")
 def transactions(mode: str = "uncategorized", limit: int = 50):

@@ -186,9 +186,25 @@
 const state = {
   categories: [],
   budgets: [],
-  pending: {},    // group_id → {category_name, budget_name, destination_name}
-  done: new Set() // group_ids that have been saved
+  destinations: [],   // known destination names for autocomplete
+  pending: {},        // group_id → {category_name, budget_name, destination_name}
+  done: new Set()     // group_ids that have been saved
 };
+
+function normalizeName(s) {
+  const t = String(s || '').trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
+}
+
+function updateDestinationList() {
+  let dl = document.getElementById('vendor-list');
+  if (!dl) {
+    dl = document.createElement('datalist');
+    dl.id = 'vendor-list';
+    document.body.appendChild(dl);
+  }
+  dl.innerHTML = state.destinations.map(d => `<option value="${esc(d)}">`).join('');
+}
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
@@ -218,8 +234,10 @@ async function boot() {
   // Load metadata for dropdowns
   try {
     const meta = await apiFetch('/api/metadata');
-    state.categories = meta.categories || [];
-    state.budgets    = meta.budgets    || [];
+    state.categories    = meta.categories    || [];
+    state.budgets       = meta.budgets       || [];
+    state.destinations  = meta.destinations  || [];
+    updateDestinationList();
   } catch {}
 }
 
@@ -315,14 +333,23 @@ function renderTransactions(items) {
     return;
   }
 
-  // Pre-populate pending state from suggestions
+  // Pre-populate pending state from suggestions; collect destinations for autocomplete
+  const knownSet = new Set(state.destinations);
   items.forEach(({transaction: t, suggestion: s}) => {
+    // If no destination suggestion, fall back to normalized description
+    const dest = s.destination_name || t.destination_name || normalizeName(t.description);
     state.pending[t.group_id] = {
-      category_name:   s.category_name   || t.category_name   || '',
-      budget_name:     s.budget_name     || t.budget_name     || '',
-      destination_name: s.destination_name || t.destination_name || '',
+      category_name:    s.category_name || t.category_name || '',
+      budget_name:      s.budget_name   || t.budget_name   || '',
+      destination_name: dest,
     };
+    if (t.destination_name && !knownSet.has(t.destination_name)) {
+      knownSet.add(t.destination_name);
+      state.destinations.push(t.destination_name);
+    }
   });
+  state.destinations.sort();
+  updateDestinationList();
 
   list.innerHTML = items.map(({transaction: t, suggestion: s}) => {
     const p = state.pending[t.group_id];
@@ -358,8 +385,9 @@ function renderTransactions(items) {
         <label style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">
           Leverantör
           <input type="text" value="${esc(p.destination_name)}"
+            list="vendor-list"
             oninput="updatePending('${t.group_id}','destination_name',this.value)"
-            style="padding:5px 8px;border:1px solid #ccd;border-radius:5px;font-size:0.82rem;width:150px" />
+            style="padding:5px 8px;border:1px solid #ccd;border-radius:5px;font-size:0.82rem;width:180px" />
         </label>
       </div>
       <div style="margin-top:10px;display:flex;gap:8px">
@@ -374,6 +402,12 @@ function renderTransactions(items) {
 function updatePending(gid, field, value) {
   if (!state.pending[gid]) state.pending[gid] = {};
   state.pending[gid][field] = value;
+  // When a user manually picks/types a destination, add it to the autocomplete list
+  if (field === 'destination_name' && value && !state.destinations.includes(value)) {
+    state.destinations.push(value);
+    state.destinations.sort();
+    updateDestinationList();
+  }
 }
 
 async function saveSingle(gid) {
