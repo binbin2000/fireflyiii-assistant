@@ -3,241 +3,787 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Firefly III Kategoriserare</title>
+  <title>Firefly Assistant</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f4f6f9; color: #222; }
-    header {
-      background: #1a2340; color: #fff; padding: 12px 24px;
-      display: flex; align-items: center; justify-content: space-between;
+
+    :root {
+      --sidebar-w:      220px;
+      --accent:         #6366f1;
+      --accent-dark:    #4f46e5;
+      --accent-light:   #eef2ff;
+      --sidebar-bg:     #0f172a;
+      --sidebar-border: rgba(255,255,255,0.07);
+      --bg:             #f8fafc;
+      --surface:        #ffffff;
+      --border:         #e2e8f0;
+      --border-2:       #cbd5e1;
+      --text:           #0f172a;
+      --text-2:         #64748b;
+      --text-3:         #94a3b8;
+      --success-bg:     #f0fdf4;
+      --success-text:   #166534;
+      --error-bg:       #fef2f2;
+      --error-text:     #991b1b;
+      --shadow-sm:      0 1px 2px rgba(0,0,0,.05);
+      --shadow:         0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md:      0 4px 8px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+      --font:           -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     }
-    header h1 { font-size: 1.1rem; font-weight: 600; }
-    #user-badge { font-size: 0.8rem; opacity: 0.75; }
-    nav { background: #fff; border-bottom: 1px solid #dde; display: flex; padding: 0 24px; }
-    nav button {
-      background: none; border: none; padding: 14px 20px; cursor: pointer;
-      font-size: 0.9rem; color: #555; border-bottom: 3px solid transparent;
-      transition: color 0.15s, border-color 0.15s;
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
-    nav button.active { color: #1a2340; border-bottom-color: #1a2340; font-weight: 600; }
-    main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+
+    /* ── Layout ── */
+    .app-layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar-brand {
+      padding: 18px 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .brand-icon {
+      width: 32px; height: 32px;
+      background: var(--accent);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(99,102,241,.4);
+    }
+
+    .brand-name {
+      color: #f1f5f9;
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+
+    .brand-sub {
+      color: rgba(255,255,255,.35);
+      font-size: 0.68rem;
+      letter-spacing: 0.01em;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .nav-section {
+      font-size: 0.62rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,.2);
+      padding: 12px 10px 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      border: none;
+      background: none;
+      color: rgba(255,255,255,.45);
+      font-size: 0.825rem;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      transition: background 0.12s, color 0.12s;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.8);
+    }
+
+    .nav-item.active {
+      background: rgba(99,102,241,.2);
+      color: #a5b4fc;
+    }
+
+    .nav-item.active .nav-icon { color: #818cf8; }
+
+    .nav-icon { flex-shrink: 0; opacity: .9; }
+
+    .sidebar-footer {
+      padding: 10px 8px 14px;
+      border-top: 1px solid var(--sidebar-border);
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 7px;
+    }
+
+    .user-avatar {
+      width: 28px; height: 28px;
+      background: rgba(255,255,255,.1);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,.6);
+      font-size: 0.72rem;
+      font-weight: 600;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+
+    #user-badge {
+      color: rgba(255,255,255,.4);
+      font-size: 0.775rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Main area ── */
+    .main-area {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .page-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Status bar ── */
+    #status {
+      margin: 16px 28px 0;
+      padding: 9px 14px 9px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      background: var(--accent-light);
+      color: #4338ca;
+      border: 1px solid rgba(99,102,241,.15);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      line-height: 1.4;
+    }
+
+    #status::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+      opacity: .7;
+    }
+
+    #status.error {
+      background: var(--error-bg);
+      color: var(--error-text);
+      border-color: rgba(239,68,68,.15);
+    }
+
+    #status.ok {
+      background: var(--success-bg);
+      color: var(--success-text);
+      border-color: rgba(16,185,129,.15);
+    }
+
+    /* ── Content ── */
+    .content {
+      padding: 22px 28px 48px;
+      max-width: 880px;
+    }
+
+    .content.wide { max-width: none; }
+
     .tab { display: none; }
     .tab.active { display: block; }
 
-    /* Status bar */
-    #status {
-      padding: 10px 16px; border-radius: 6px; margin-bottom: 16px;
-      font-size: 0.875rem; background: #e8f0fe; color: #1a2340;
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
     }
-    #status.error { background: #fdecea; color: #c0392b; }
-    #status.ok { background: #e6f9f0; color: #1a7a4a; }
 
-    /* Buttons */
+    /* ── Buttons ── */
     .btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer;
-      font-size: 0.85rem; font-weight: 500; transition: opacity 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-family: var(--font);
+      letter-spacing: -0.01em;
+      transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+      white-space: nowrap;
     }
-    .btn:disabled { opacity: 0.45; cursor: default; }
-    .btn-primary { background: #1a2340; color: #fff; }
-    .btn-secondary { background: #e2e8f0; color: #333; }
-    .btn-danger { background: #e53e3e; color: #fff; }
-    .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
 
-    /* Cards */
-    .card {
-      background: #fff; border-radius: 8px; border: 1px solid #dde;
-      padding: 16px; margin-bottom: 12px;
-    }
-    .card-header {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 12px; margin-bottom: 10px;
-    }
-    .card-title { font-weight: 600; font-size: 0.95rem; }
-    .card-meta { font-size: 0.78rem; color: #888; margin-top: 2px; }
-    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
-    .card-body { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn:disabled { opacity: 0.38; cursor: default; pointer-events: none; }
 
-    /* Suggestion chips */
-    .chip {
-      font-size: 0.75rem; background: #eef2ff; color: #3730a3;
-      border-radius: 12px; padding: 2px 10px; display: inline-block;
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 1px 2px rgba(99,102,241,.25), inset 0 1px 0 rgba(255,255,255,.1);
     }
-    .chip.local { background: #f0fdf4; color: #166534; }
-    .chip.cloud { background: #eff6ff; color: #1d4ed8; }
-    .chip.manual { background: #fef9c3; color: #854d0e; }
-    .chip.none { background: #f3f4f6; color: #6b7280; }
+    .btn-primary:hover { background: var(--accent-dark); }
 
-    /* Form selects */
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-secondary:hover { background: var(--bg); border-color: var(--border-2); }
+
+    .btn-danger {
+      background: var(--surface);
+      color: #dc2626;
+      border: 1px solid #fecaca;
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-danger:hover { background: var(--error-bg); border-color: #fca5a5; }
+
+    .btn-sm { padding: 5px 10px; font-size: 0.75rem; }
+
+    /* ── Selects ── */
     select {
-      padding: 5px 8px; border: 1px solid #ccd; border-radius: 5px;
-      font-size: 0.82rem; background: #fff; cursor: pointer; min-width: 130px;
+      padding: 7px 28px 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-family: var(--font);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      min-width: 140px;
+      box-shadow: var(--shadow-sm);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 9px center;
     }
 
-    /* Confidence badges */
+    select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      margin-bottom: 8px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .card:hover { box-shadow: var(--shadow); border-color: var(--border-2); }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .card-meta {
+      font-size: 0.75rem;
+      color: var(--text-2);
+      margin-top: 3px;
+      line-height: 1.5;
+    }
+
+    .card-chips {
+      display: flex;
+      gap: 5px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .card-body {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-actions {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--bg);
+      display: flex;
+      gap: 6px;
+    }
+
+    /* ── Form fields ── */
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-input {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-family: var(--font);
+      background: var(--surface);
+      color: var(--text);
+      width: 185px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .form-input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+      border-color: transparent;
+    }
+
+    /* ── Chips ── */
+    .chip {
+      font-size: 0.68rem;
+      font-weight: 500;
+      border-radius: 999px;
+      padding: 2px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    .chip::before {
+      content: '';
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: .7;
+    }
+
+    .chip.local  { background: #f0fdf4; color: #166534; }
+    .chip.cloud  { background: #eff6ff; color: #1d4ed8; }
+    .chip.manual { background: #fffbeb; color: #92400e; }
+    .chip.none   { background: #f8fafc; color: #475569; border: 1px solid var(--border); }
+
+    /* ── Confidence badges ── */
     .badge {
-      display: inline-block; border-radius: 12px; padding: 2px 10px;
-      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
     }
-    .badge-high { background: #fde8e8; color: #c0392b; }
-    .badge-medium { background: #fef3cd; color: #856404; }
-    .badge-low { background: #e2e8f0; color: #4a5568; }
 
-    /* Duplicates layout */
-    .dup-pair { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-    .dup-txn {
-      flex: 1; min-width: 200px; background: #f9fafb; border-radius: 6px;
-      border: 1px solid #e2e8f0; padding: 10px;
+    .badge-high   { background: #fef2f2; color: #991b1b; }
+    .badge-medium { background: #fffbeb; color: #92400e; }
+    .badge-low    { background: #f8fafc; color: #475569; }
+
+    /* ── Progress pill ── */
+    .progress-text {
+      font-size: 0.75rem;
+      color: var(--text-2);
+      background: var(--surface);
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
     }
-    .dup-txn.keep { border-color: #68d391; background: #f0fff4; }
-    .dup-txn.remove { border-color: #fc8181; background: #fff5f5; }
-    .dup-txn-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.05em; color: #888; margin-bottom: 4px; }
 
-    /* Rules list */
-    .rule-row { display: flex; align-items: center; gap: 10px; padding: 8px 0;
-      border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; }
-    .rule-row:last-child { border-bottom: none; }
-    .rule-active { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .rule-active.on { background: #48bb78; }
-    .rule-active.off { background: #cbd5e0; }
+    /* ── Empty states ── */
+    .empty {
+      text-align: center;
+      padding: 64px 0 48px;
+    }
 
-    /* Toolbar */
-    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-    .toolbar select { min-width: 160px; }
+    .empty-icon {
+      width: 44px; height: 44px;
+      margin: 0 auto 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-3);
+      box-shadow: var(--shadow-sm);
+    }
 
-    /* Progress text */
-    .progress-text { font-size: 0.8rem; color: #666; }
+    .empty-title { font-size: 0.875rem; font-weight: 600; color: var(--text-2); }
+    .empty-sub   { font-size: 0.775rem; color: var(--text-3); margin-top: 4px; }
 
-    /* Empty state */
-    .empty { text-align: center; padding: 48px 0; color: #aaa; font-size: 0.9rem; }
-
-    /* Spinner */
+    /* ── Spinner ── */
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner {
-      display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor;
-      border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite;
+      display: inline-block;
+      width: 13px; height: 13px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.55s linear infinite;
     }
 
-    /* Budget overview table */
+    /* ── Duplicates ── */
+    .dup-pair { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+    .dup-txn {
+      flex: 1;
+      min-width: 200px;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+    }
+
+    .dup-txn.keep   { border-color: #86efac; background: #f0fdf4; }
+    .dup-txn.remove { border-color: #fca5a5; background: #fef2f2; }
+
+    .dup-txn-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-3);
+      margin-bottom: 7px;
+    }
+
+    .dup-txn.keep   .dup-txn-label { color: #16a34a; }
+    .dup-txn.remove .dup-txn-label { color: #dc2626; }
+
+    .dup-txn-name { font-weight: 600; font-size: 0.85rem; color: var(--text); }
+    .dup-txn-meta { font-size: 0.75rem; color: var(--text-2); margin-top: 4px; }
+    .dup-txn-cat  { font-size: 0.72rem; color: var(--text-3); margin-top: 3px; }
+
+    /* ── Rules ── */
+    .rules-card .card { padding: 4px 20px; }
+
+    .rule-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--bg);
+      font-size: 0.825rem;
+    }
+
+    .rule-row:last-child { border-bottom: none; }
+
+    .rule-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .rule-dot.on  { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,.2); }
+    .rule-dot.off { background: #cbd5e1; }
+
+    .rule-title   { flex: 1; color: var(--text); font-weight: 500; }
+    .rule-trigger { font-size: 0.72rem; color: var(--text-3); font-family: 'SFMono-Regular', Consolas, monospace; }
+
+    /* ── Budget table ── */
     .budget-table-wrapper {
-      overflow-x: auto; background: #fff;
-      border-radius: 8px; border: 1px solid #dde;
+      overflow-x: auto;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
     }
-    .budget-table { border-collapse: collapse; font-size: 0.85rem; width: 100%; }
-    .budget-table th, .budget-table td {
-      border: 1px solid #e2e8f0; padding: 8px 12px;
-      text-align: right; white-space: nowrap;
+
+    .budget-table { border-collapse: collapse; font-size: 0.8rem; width: 100%; }
+
+    .budget-table th,
+    .budget-table td {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 9px 14px;
+      text-align: right;
+      white-space: nowrap;
     }
+
+    .budget-table th:last-child,
+    .budget-table td:last-child { border-right: none; }
+
+    .budget-table thead tr:last-child th { border-bottom: 2px solid rgba(255,255,255,.1); }
+
     .budget-table th {
-      background: #1a2340; color: #fff; font-weight: 600;
-      position: sticky; top: 0; z-index: 2;
+      background: #0f172a;
+      color: rgba(255,255,255,.7);
+      font-weight: 500;
+      font-size: 0.72rem;
+      letter-spacing: 0.03em;
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
-    .budget-table th:first-child { z-index: 3; }
-    .budget-table th:first-child, .budget-table td:first-child { text-align: left; }
+
+    .budget-table th:first-child { z-index: 3; text-align: left; }
+    .budget-table td:first-child  { text-align: left; }
+
     .budget-table td:first-child {
-      background: #f8fafc; font-weight: 500;
-      position: sticky; left: 0; z-index: 1;
+      background: #f8fafc;
+      font-weight: 500;
+      color: var(--text);
+      position: sticky;
+      left: 0;
+      z-index: 1;
     }
-    .budget-table tbody tr:hover td { background: #f0f4ff; }
-    .budget-table tbody tr:hover td:first-child { background: #e8eef8; }
-    .sum-row td, .sum-col { background: #eef2ff !important; font-weight: 600; }
+
+    .budget-table tbody tr:hover td             { background: var(--accent-light); }
+    .budget-table tbody tr:hover td:first-child { background: #dde4fb; }
+
+    .sum-row td, .sum-col { background: #f1f5f9 !important; font-weight: 600; color: var(--text); }
+
     .budget-cell { padding: 0 !important; }
+
     .budget-cell-input {
-      display: block; width: 100%; min-width: 90px;
-      padding: 8px 12px; text-align: right;
-      border: none; background: transparent;
-      font-size: 0.85rem; color: #222; cursor: pointer;
+      display: block;
+      width: 100%;
+      min-width: 90px;
+      padding: 9px 14px;
+      text-align: right;
+      border: none;
+      background: transparent;
+      font-size: 0.8rem;
+      font-family: var(--font);
+      color: var(--text);
+      cursor: pointer;
     }
-    .budget-cell-input::-webkit-inner-spin-button { opacity: 0.4; }
+
+    .budget-cell-input::-webkit-inner-spin-button { opacity: .4; }
+
     .budget-cell-input:focus {
-      outline: 2px solid #1a2340; outline-offset: -2px;
-      background: #fffbe6; cursor: text;
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+      background: #fefce8;
+      cursor: text;
     }
-    .budget-cell.saving { background: #e6f9f0 !important; opacity: 0.7; }
-    .budget-cell.cell-error { background: #fdecea !important; }
+
+    .budget-cell.saving    { background: var(--success-bg) !important; opacity: .7; }
+    .budget-cell.cell-error { background: var(--error-bg) !important; }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>Firefly III Kategoriserare</h1>
-  <span id="user-badge">Laddar...</span>
-</header>
+<div class="app-layout">
 
-<nav>
-  <button class="active" onclick="showTab('tab-cat', this)">Kategorisera</button>
-  <button onclick="showTab('tab-dup', this)">Dubbletter</button>
-  <button onclick="showTab('tab-rules', this)">Regler</button>
-  <button onclick="showTab('tab-budget', this)">Budgetöversikt</button>
-</nav>
-
-<main>
-  <div id="status">Ansluter till Firefly III…</div>
-
-  <!-- ── KATEGORISERA ────────────────────────────────────────── -->
-  <div id="tab-cat" class="tab active">
-    <div class="toolbar">
-      <button class="btn btn-primary" id="btn-load" onclick="loadTransactions()">
-        Hämta transaktioner
-      </button>
-      <button class="btn btn-secondary" id="btn-save" onclick="saveAll()" disabled>
-        Spara alla
-      </button>
-      <select id="mode-select">
-        <option value="uncategorized">Okategoriserade</option>
-        <option value="all">Alla</option>
-      </select>
-      <span class="progress-text" id="progress-text"></span>
+  <!-- ── Sidebar ─────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <svg width="17" height="17" fill="none" viewBox="0 0 24 24">
+          <path d="M12 2C9.5 5.5 7 8 7 13a5 5 0 0010 0c0-5-2.5-7.5-5-11z" fill="white" opacity=".9"/>
+          <path d="M12 9c-.8 1.5-1.5 2.5-1.5 4a1.5 1.5 0 003 0c0-1.5-.7-2.5-1.5-4z" fill="white" opacity=".5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">Firefly III</div>
+        <div class="brand-sub">Assistant</div>
+      </div>
     </div>
-    <div id="txn-list"></div>
-  </div>
 
-  <!-- ── DUBBLETTER ─────────────────────────────────────────── -->
-  <div id="tab-dup" class="tab">
-    <div class="toolbar">
-      <button class="btn btn-primary" onclick="loadDuplicates()">
-        Sök dubbletter
-      </button>
-      <select id="dup-days">
-        <option value="30">Senaste 30 dagarna</option>
-        <option value="60">Senaste 60 dagarna</option>
-        <option value="90">Senaste 90 dagarna</option>
-      </select>
-    </div>
-    <div id="dup-list"></div>
-  </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Verktyg</div>
 
-  <!-- ── REGLER ─────────────────────────────────────────────── -->
-  <div id="tab-rules" class="tab">
-    <div class="toolbar">
-      <button class="btn btn-primary" onclick="loadRules()">Uppdatera regler</button>
-      <button class="btn btn-secondary" id="btn-create-rules" onclick="createRules()" disabled>
-        Skapa regler för sparade
+      <button class="nav-item active" onclick="showTab('tab-cat', this, 'Kategorisera')">
+        <svg class="nav-icon" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
+        </svg>
+        Kategorisera
       </button>
-    </div>
-    <div id="rules-list"></div>
-  </div>
 
-  <!-- ── BUDGETÖVERSIKT ────────────────────────────────────────── -->
-  <div id="tab-budget" class="tab">
-    <div class="toolbar">
-      <button class="btn btn-primary" id="btn-load-budget" onclick="loadBudgetOverview()">
-        Ladda budgetöversikt
+      <button class="nav-item" onclick="showTab('tab-dup', this, 'Dubbletter')">
+        <svg class="nav-icon" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+        </svg>
+        Dubbletter
       </button>
+
+      <button class="nav-item" onclick="showTab('tab-rules', this, 'Regler')">
+        <svg class="nav-icon" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        Regler
+      </button>
+
+      <button class="nav-item" onclick="showTab('tab-budget', this, 'Budgetöversikt')">
+        <svg class="nav-icon" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Budgetöversikt
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar" id="user-avatar">–</div>
+        <span id="user-badge">Laddar...</span>
+      </div>
     </div>
-    <div id="budget-table-container"></div>
-  </div>
-</main>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────── -->
+  <div class="main-area">
+
+    <header class="topbar">
+      <h1 class="page-title" id="page-title">Kategorisera</h1>
+    </header>
+
+    <div id="status">Ansluter till Firefly III…</div>
+
+    <div class="content" id="main-content">
+
+      <!-- ── KATEGORISERA ──────────────────────────────────────── -->
+      <div id="tab-cat" class="tab active">
+        <div class="toolbar">
+          <button class="btn btn-primary" id="btn-load" onclick="loadTransactions()">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Hämta transaktioner
+          </button>
+          <button class="btn btn-secondary" id="btn-save" onclick="saveAll()" disabled>
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            Spara alla
+          </button>
+          <select id="mode-select">
+            <option value="uncategorized">Okategoriserade</option>
+            <option value="all">Alla transaktioner</option>
+          </select>
+          <span class="progress-text" id="progress-text" style="display:none"></span>
+        </div>
+        <div id="txn-list"></div>
+      </div>
+
+      <!-- ── DUBBLETTER ────────────────────────────────────────── -->
+      <div id="tab-dup" class="tab">
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="loadDuplicates()">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            Sök dubbletter
+          </button>
+          <select id="dup-days">
+            <option value="30">Senaste 30 dagarna</option>
+            <option value="60">Senaste 60 dagarna</option>
+            <option value="90">Senaste 90 dagarna</option>
+          </select>
+        </div>
+        <div id="dup-list"></div>
+      </div>
+
+      <!-- ── REGLER ─────────────────────────────────────────────── -->
+      <div id="tab-rules" class="tab">
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="loadRules()">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Uppdatera regler
+          </button>
+          <button class="btn btn-secondary" id="btn-create-rules" onclick="createRules()" disabled>
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            Skapa regler för sparade
+          </button>
+        </div>
+        <div id="rules-list" class="rules-card"></div>
+      </div>
+
+      <!-- ── BUDGETÖVERSIKT ────────────────────────────────────── -->
+      <div id="tab-budget" class="tab">
+        <div class="toolbar">
+          <button class="btn btn-primary" id="btn-load-budget" onclick="loadBudgetOverview()">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Ladda budgetöversikt
+          </button>
+        </div>
+        <div id="budget-table-container"></div>
+      </div>
+
+    </div><!-- /.content -->
+  </div><!-- /.main-area -->
+</div><!-- /.app-layout -->
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
   categories: [],
   budgets: [],
-  destinations: [],   // known destination names for autocomplete
-  pending: {},        // group_id → {category_name, budget_name, destination_name}
-  done: new Set()     // group_ids that have been saved
+  destinations: [],
+  pending: {},
+  done: new Set()
 };
 
 function normalizeName(s) {
@@ -257,22 +803,22 @@ function updateDestinationList() {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
-  // Fetch user identity (injected by Authelia via Traefik forwardAuth)
   try {
     const me = await apiFetch('/api/me');
-    document.getElementById('user-badge').textContent =
-      me.name || me.user || 'Inloggad';
+    const name = me.name || me.user || 'Inloggad';
+    document.getElementById('user-badge').textContent = name;
+    const av = document.getElementById('user-avatar');
+    if (av) av.textContent = name.charAt(0).toUpperCase();
   } catch {
     document.getElementById('user-badge').textContent = 'Inte inloggad';
   }
 
-  // Initialise backend (connect to Firefly III, build history index)
   setStatus('Ansluter och hämtar historik…');
   try {
     const info = await apiFetch('/api/init', {method: 'POST'});
     setStatus(
-      `Klar. ${info.categories} kategorier, ${info.budgets} budgetar, ` +
-      `${info.history} historiska transaktioner. AI: ${info.ai_backend}.`,
+      `Klar. ${info.categories} kategorier · ${info.budgets} budgetar · ` +
+      `${info.history} historiska transaktioner · AI: ${info.ai_backend}.`,
       'ok'
     );
   } catch (e) {
@@ -280,12 +826,11 @@ async function boot() {
     return;
   }
 
-  // Load metadata for dropdowns
   try {
     const meta = await apiFetch('/api/metadata');
-    state.categories    = meta.categories    || [];
-    state.budgets       = meta.budgets       || [];
-    state.destinations  = meta.destinations  || [];
+    state.categories   = meta.categories   || [];
+    state.budgets      = meta.budgets      || [];
+    state.destinations = meta.destinations || [];
     updateDestinationList();
   } catch {}
 }
@@ -310,12 +855,13 @@ async function apiFetch(url, opts = {}) {
   return r.json();
 }
 
-function showTab(id, btn) {
+function showTab(id, btn, title) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
-  document.querySelector('main').style.maxWidth = id === 'tab-budget' ? '100%' : '960px';
+  document.getElementById('page-title').textContent = title || '';
+  document.getElementById('main-content').classList.toggle('wide', id === 'tab-budget');
 }
 
 function categoryOptions(selected) {
@@ -349,9 +895,22 @@ function updateProgress() {
   const total = Object.keys(state.pending).length;
   const done  = state.done.size;
   const el = document.getElementById('progress-text');
-  el.textContent = total ? `${done} sparade av ${total + done} totalt` : '';
+  if (total || done) {
+    el.style.display = '';
+    el.textContent = `${done} sparade av ${total + done} totalt`;
+  } else {
+    el.style.display = 'none';
+  }
   document.getElementById('btn-save').disabled = total === 0;
   document.getElementById('btn-create-rules').disabled = state.done.size === 0;
+}
+
+function emptyState(iconSvg, title, sub) {
+  return `<div class="empty">
+    <div class="empty-icon">${iconSvg}</div>
+    <div class="empty-title">${title}</div>
+    ${sub ? `<div class="empty-sub">${sub}</div>` : ''}
+  </div>`;
 }
 
 // ── Tab: Kategorisera ─────────────────────────────────────────────────────────
@@ -371,22 +930,24 @@ async function loadTransactions() {
     setStatus('Fel: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Hämta transaktioner';
+    btn.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Hämta transaktioner`;
   }
 }
 
 function renderTransactions(items) {
   const list = document.getElementById('txn-list');
   if (!items.length) {
-    list.innerHTML = '<div class="empty">Inga transaktioner hittades.</div>';
+    list.innerHTML = emptyState(
+      `<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>`,
+      'Inga transaktioner hittades',
+      'Prova att byta filter eller hämta igen.'
+    );
     updateProgress();
     return;
   }
 
-  // Pre-populate pending state from suggestions; collect destinations for autocomplete
   const knownSet = new Set(state.destinations);
   items.forEach(({transaction: t, suggestion: s}) => {
-    // If no destination suggestion, fall back to normalized description
     const dest = s.destination_name || t.destination_name || normalizeName(t.description);
     state.pending[t.group_id] = {
       category_name:    s.category_name || t.category_name || '',
@@ -402,9 +963,9 @@ function renderTransactions(items) {
   updateDestinationList();
 
   list.innerHTML = items.map(({transaction: t, suggestion: s}) => {
-    const p = state.pending[t.group_id];
-    const src = chipClass(s.source || 'none');
-    const amount = Number(t.amount).toLocaleString('sv-SE', {minimumFractionDigits: 2}) + ' ' + (t.currency_code || 'kr');
+    const p      = state.pending[t.group_id];
+    const src    = chipClass(s.source || 'none');
+    const amount = Number(t.amount).toLocaleString('sv-SE', {minimumFractionDigits: 2}) + ' ' + (t.currency_code || 'kr');
     const date   = (t.date || '').slice(0, 10);
     return `
     <div class="card" id="card-${t.group_id}">
@@ -412,36 +973,38 @@ function renderTransactions(items) {
         <div>
           <div class="card-title">${esc(t.description)}</div>
           <div class="card-meta">${esc(t.source_name)} → ${esc(t.destination_name)} &nbsp;·&nbsp; ${amount} &nbsp;·&nbsp; ${date}</div>
-          ${s.reasoning ? `<div class="card-meta" style="margin-top:4px;font-style:italic">${esc(s.reasoning)}</div>` : ''}
+          ${s.reasoning ? `<div class="card-meta" style="font-style:italic;margin-top:2px">${esc(s.reasoning)}</div>` : ''}
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+        <div class="card-chips">
           <span class="chip ${src}">${sourceLabel(s.source)}</span>
           ${s.confidence ? `<span class="chip none">${Math.round(s.confidence * 100)}%</span>` : ''}
         </div>
       </div>
       <div class="card-body">
-        <label style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">
-          Kategori
+        <div class="form-field">
+          <span class="form-label">Kategori</span>
           <select onchange="updatePending('${t.group_id}','category_name',this.value)">
             ${categoryOptions(p.category_name)}
           </select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">
-          Budget
+        </div>
+        <div class="form-field">
+          <span class="form-label">Budget</span>
           <select onchange="updatePending('${t.group_id}','budget_name',this.value)">
             ${budgetOptions(p.budget_name)}
           </select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">
-          Leverantör
-          <input type="text" value="${esc(p.destination_name)}"
+        </div>
+        <div class="form-field">
+          <span class="form-label">Leverantör</span>
+          <input class="form-input" type="text" value="${esc(p.destination_name)}"
             list="vendor-list"
-            oninput="updatePending('${t.group_id}','destination_name',this.value)"
-            style="padding:5px 8px;border:1px solid #ccd;border-radius:5px;font-size:0.82rem;width:180px" />
-        </label>
+            oninput="updatePending('${t.group_id}','destination_name',this.value)" />
+        </div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" onclick="saveSingle('${t.group_id}')">Spara</button>
+      <div class="card-actions">
+        <button class="btn btn-primary btn-sm" onclick="saveSingle('${t.group_id}')">
+          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Spara
+        </button>
         <button class="btn btn-secondary btn-sm" onclick="skipSingle('${t.group_id}')">Hoppa över</button>
       </div>
     </div>`;
@@ -452,7 +1015,6 @@ function renderTransactions(items) {
 function updatePending(gid, field, value) {
   if (!state.pending[gid]) state.pending[gid] = {};
   state.pending[gid][field] = value;
-  // When a user manually picks/types a destination, add it to the autocomplete list
   if (field === 'destination_name' && value && !state.destinations.includes(value)) {
     state.destinations.push(value);
     state.destinations.sort();
@@ -509,7 +1071,7 @@ async function saveAll() {
     setStatus('Fel: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Spara alla';
+    btn.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Spara alla`;
     updateProgress();
   }
 }
@@ -519,7 +1081,7 @@ async function loadDuplicates() {
   const days = document.getElementById('dup-days').value;
   setStatus('Söker efter dubbletter…');
   const list = document.getElementById('dup-list');
-  list.innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+  list.innerHTML = '<div class="empty"><span class="spinner" style="width:20px;height:20px;border-width:2px;color:var(--text-3)"></span></div>';
   try {
     const groups = await apiFetch(`/api/duplicates?days=${days}`);
     renderDuplicates(groups);
@@ -533,7 +1095,11 @@ async function loadDuplicates() {
 function renderDuplicates(groups) {
   const list = document.getElementById('dup-list');
   if (!groups.length) {
-    list.innerHTML = '<div class="empty">Inga dubbletter hittade.</div>';
+    list.innerHTML = emptyState(
+      `<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+      'Inga dubbletter hittade',
+      'Alla transaktioner ser unika ut.'
+    );
     return;
   }
   list.innerHTML = groups.map((g, i) => {
@@ -545,22 +1111,22 @@ function renderDuplicates(groups) {
       <div class="card-header">
         <div>
           <div class="card-title">${esc(a.description)}</div>
-          <div class="card-meta">${g.delta_days} dagars skillnad &nbsp;·&nbsp; ${Number(a.amount).toLocaleString('sv-SE',{minimumFractionDigits:2})} ${a.currency_code||'kr'}</div>
+          <div class="card-meta">${g.delta_days} dagars skillnad &nbsp;·&nbsp; ${Number(a.amount).toLocaleString('sv-SE',{minimumFractionDigits:2})} ${a.currency_code||'kr'}</div>
         </div>
         <span class="badge ${badgeClass}">${confLabel} sannolikhet</span>
       </div>
       <div class="dup-pair">
-        ${dupCard(a, 'Behåll')}
-        ${dupCard(b, 'Möjlig dubblett')}
+        ${dupCard(a, 'Behåll', true)}
+        ${dupCard(b, 'Möjlig dubblett', false)}
       </div>
-      <div style="margin-top:12px;display:flex;gap:8px">
+      <div class="card-actions">
         <button class="btn btn-danger btn-sm"
           onclick="resolveDup('${a.group_id}','${b.group_id}','dup-${i}')">
-          Ta bort transaktionen till höger
+          Ta bort höger
         </button>
         <button class="btn btn-danger btn-sm"
           onclick="resolveDup('${b.group_id}','${a.group_id}','dup-${i}')">
-          Ta bort transaktionen till vänster
+          Ta bort vänster
         </button>
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dup-${i}').remove()">
           Hoppa över
@@ -570,16 +1136,16 @@ function renderDuplicates(groups) {
   }).join('');
 }
 
-function dupCard(t, label) {
+function dupCard(t, label, isKeep) {
   return `
-  <div class="dup-txn">
+  <div class="dup-txn ${isKeep ? 'keep' : 'remove'}">
     <div class="dup-txn-label">${label}</div>
-    <div style="font-weight:600;font-size:0.88rem">${esc(t.description)}</div>
-    <div style="font-size:0.78rem;color:#666;margin-top:3px">
+    <div class="dup-txn-name">${esc(t.description)}</div>
+    <div class="dup-txn-meta">
       ${(t.date||'').slice(0,10)} &nbsp;·&nbsp;
-      ${Number(t.amount).toLocaleString('sv-SE',{minimumFractionDigits:2})} ${t.currency_code||'kr'}
+      ${Number(t.amount).toLocaleString('sv-SE',{minimumFractionDigits:2})} ${t.currency_code||'kr'}
     </div>
-    ${t.category_name ? `<div style="font-size:0.75rem;color:#555;margin-top:3px">📂 ${esc(t.category_name)}</div>` : ''}
+    ${t.category_name ? `<div class="dup-txn-cat">${esc(t.category_name)}</div>` : ''}
   </div>`;
 }
 
@@ -603,7 +1169,7 @@ async function resolveDup(keepId, deleteId, cardId) {
 async function loadRules() {
   setStatus('Hämtar regler…');
   const list = document.getElementById('rules-list');
-  list.innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+  list.innerHTML = '<div class="empty"><span class="spinner" style="width:20px;height:20px;border-width:2px;color:var(--text-3)"></span></div>';
   try {
     const rules = await apiFetch('/api/rules');
     renderRules(rules);
@@ -617,14 +1183,18 @@ async function loadRules() {
 function renderRules(rules) {
   const list = document.getElementById('rules-list');
   if (!rules.length) {
-    list.innerHTML = '<div class="empty">Inga regler skapade ännu.</div>';
+    list.innerHTML = emptyState(
+      `<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>`,
+      'Inga regler skapade ännu',
+      'Spara transaktioner och skapa regler från dem.'
+    );
     return;
   }
   list.innerHTML = `<div class="card">${rules.map(r => `
     <div class="rule-row">
-      <span class="rule-active ${r.active ? 'on' : 'off'}" title="${r.active ? 'Aktiv' : 'Inaktiv'}"></span>
-      <span style="flex:1">${esc(r.title)}</span>
-      <span style="font-size:0.75rem;color:#888">${esc(r.trigger)}</span>
+      <span class="rule-dot ${r.active ? 'on' : 'off'}" title="${r.active ? 'Aktiv' : 'Inaktiv'}"></span>
+      <span class="rule-title">${esc(r.title)}</span>
+      <span class="rule-trigger">${esc(r.trigger)}</span>
     </div>`).join('')}
   </div>`;
 }
@@ -640,7 +1210,7 @@ async function createRules() {
       body: {group_ids: [...state.done]},
     });
     setStatus(
-      `${res.created.length} regler skapade, ${res.skipped.length} hoppade över, ${res.errors.length} fel.`,
+      `${res.created.length} regler skapade · ${res.skipped.length} hoppade över · ${res.errors.length} fel.`,
       res.errors.length ? 'error' : 'ok'
     );
     await loadRules();
@@ -648,13 +1218,12 @@ async function createRules() {
     setStatus('Fel: ' + e.message, 'error');
   } finally {
     btn.disabled = state.done.size === 0;
-    btn.textContent = 'Skapa regler för sparade';
+    btn.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> Skapa regler för sparade`;
   }
 }
 
 // ── Tab: Budgetöversikt ───────────────────────────────────────────────────────
 const budgetState = { budgets: [], months: [], limits: {} };
-
 const _SV_MONTHS = ['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
 
 function formatMonthLabel(isoStart) {
@@ -682,7 +1251,7 @@ async function loadBudgetOverview() {
     setStatus('Fel: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Uppdatera';
+    btn.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Uppdatera`;
   }
 }
 
@@ -691,7 +1260,11 @@ function renderBudgetTable() {
   const { budgets, months } = budgetState;
 
   if (!budgets.length) {
-    container.innerHTML = '<div class="empty">Inga budgetar hittades.</div>';
+    container.innerHTML = emptyState(
+      `<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>`,
+      'Inga budgetar hittades',
+      'Skapa budgetar i Firefly III och ladda om.'
+    );
     return;
   }
 
