@@ -167,13 +167,9 @@ class FireflyClient:
         return {"id": item.get("id"), "amount": float(attrs.get("amount") or 0)}
 
     def update_budget_limit(self, limit_id: str, budget_id: str, start: str, end: str, amount: float) -> dict:
-        data = self._put(f"budget-limits/{limit_id}", {
-            "budget_id": int(budget_id), "start": start, "end": end,
-            "amount": str(amount), "period": "monthly",
-        })
-        item = data.get("data", {})
-        attrs = item.get("attributes", {})
-        return {"id": item.get("id"), "amount": float(attrs.get("amount") or 0)}
+        # DELETE + recreate: the PUT /budget-limits/{id} endpoint is absent in some Firefly versions
+        self._delete(f"budget-limits/{limit_id}")
+        return self.create_budget_limit(budget_id, start, end, amount)
 
     def delete_budget_limit(self, limit_id: str) -> None:
         self._delete(f"budget-limits/{limit_id}")

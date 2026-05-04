@@ -154,8 +154,21 @@
       outline: 2px solid #1a2340; outline-offset: -2px;
       background: #fffbe6; cursor: text;
     }
+    .budget-cell.dirty { background: #fffbe6 !important; }
+    .budget-cell.dirty .budget-cell-input { color: #92400e; font-weight: 600; }
     .budget-cell.saving { background: #e6f9f0 !important; opacity: 0.7; }
     .budget-cell.cell-error { background: #fdecea !important; }
+
+    /* Sticky save footer */
+    .budget-footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #1a2340; color: #fff;
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 100; box-shadow: 0 -2px 8px rgba(0,0,0,0.3);
+      font-size: 0.9rem;
+    }
+    .budget-footer.hidden { display: none; }
   </style>
 </head>
 <body>
@@ -653,7 +666,7 @@ async function createRules() {
 }
 
 // ── Tab: Budgetöversikt ───────────────────────────────────────────────────────
-const budgetState = { budgets: [], months: [], limits: {} };
+const budgetState = { budgets: [], months: [], limits: {}, dirty: {} };
 
 const _SV_MONTHS = ['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
 
@@ -676,6 +689,8 @@ async function loadBudgetOverview() {
     budgetState.budgets = data.budgets;
     budgetState.months  = data.months;
     budgetState.limits  = data.limits;
+    budgetState.dirty   = {};
+    updateBudgetFooter();
     renderBudgetTable();
     setStatus(`Budgetöversikt laddad — ${data.budgets.length} budgetar.`, 'ok');
   } catch (e) {
@@ -715,7 +730,7 @@ function renderBudgetTable() {
                        type="number" min="0" step="1"
                        value="${amt > 0 ? amt : ''}"
                        placeholder="0"
-                       onchange="saveBudgetCell(this)"
+                       oninput="markDirty(this)"
                        onkeydown="if(event.key==='Enter')this.blur()" />
               </td>`;
     }).join('');
@@ -752,46 +767,106 @@ function renderBudgetTable() {
   </div>`;
 }
 
-async function saveBudgetCell(input) {
-  const cell     = input.closest('.budget-cell');
-  const key      = cell.dataset.key;
-  const budgetId = cell.dataset.budgetId;
-  const start    = cell.dataset.start;
-  const end      = cell.dataset.end;
-  const limitId  = cell.dataset.limitId || null;
-  const amount   = parseFloat(input.value) || 0;
+function markDirty(input) {
+  const cell = input.closest('.budget-cell');
+  const key  = cell.dataset.key;
+  const amount = parseFloat(input.value) || 0;
+  const orig = budgetState.limits[key];
+  const origAmount = orig ? orig.amount : 0;
 
-  if (amount === 0 && !limitId) { input.value = ''; return; }
-
-  cell.classList.add('saving');
-  input.disabled = true;
-
-  try {
-    const res = await apiFetch('/api/budget-limits', {
-      method: 'POST',
-      body: { budget_id: budgetId, start, end, amount, limit_id: limitId || null },
-    });
-
-    if (res.deleted) {
-      delete budgetState.limits[key];
-      cell.dataset.limitId = '';
-      input.value = '';
-    } else {
-      budgetState.limits[key] = { limit_id: res.limit_id, amount: res.amount };
-      cell.dataset.limitId = res.limit_id;
-      input.value = res.amount > 0 ? res.amount : '';
-    }
-    updateBudgetSums();
-  } catch (e) {
-    cell.classList.add('cell-error');
-    setTimeout(() => cell.classList.remove('cell-error'), 2000);
-    setStatus('Fel vid sparning: ' + e.message, 'error');
-    const orig = budgetState.limits[key];
-    input.value = orig && orig.amount > 0 ? orig.amount : '';
-  } finally {
-    cell.classList.remove('saving');
-    input.disabled = false;
+  if (amount !== origAmount) {
+    budgetState.dirty[key] = amount;
+    cell.classList.add('dirty');
+  } else {
+    delete budgetState.dirty[key];
+    cell.classList.remove('dirty');
   }
+  updateBudgetSums();
+  updateBudgetFooter();
+}
+
+function updateBudgetFooter() {
+  const count  = Object.keys(budgetState.dirty).length;
+  const footer = document.getElementById('budget-footer');
+  const label  = document.getElementById('budget-dirty-count');
+  footer.classList.toggle('hidden', count === 0);
+  document.querySelector('main').style.paddingBottom = count > 0 ? '64px' : '';
+  if (label) label.textContent =
+    `${count} ${count === 1 ? 'ändring' : 'ändringar'} ej sparade`;
+}
+
+async function saveAllDirty() {
+  const entries = Object.entries(budgetState.dirty);
+  if (!entries.length) return;
+
+  const btn = document.getElementById('btn-save-budget');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Sparar…';
+
+  let saved = 0, failed = 0;
+
+  await Promise.all(entries.map(([key, amount]) => {
+    const cell = document.querySelector(`.budget-cell[data-key="${key}"]`);
+    if (!cell) { delete budgetState.dirty[key]; return Promise.resolve(); }
+
+    return apiFetch('/api/budget-limits', {
+      method: 'POST',
+      body: {
+        budget_id: cell.dataset.budgetId,
+        start:     cell.dataset.start,
+        end:       cell.dataset.end,
+        amount,
+        limit_id:  cell.dataset.limitId || null,
+      },
+    }).then(res => {
+      if (res.deleted) {
+        delete budgetState.limits[key];
+        cell.dataset.limitId = '';
+        const inp = cell.querySelector('input');
+        if (inp) inp.value = '';
+      } else {
+        budgetState.limits[key] = { limit_id: res.limit_id, amount: res.amount };
+        cell.dataset.limitId = res.limit_id;
+        const inp = cell.querySelector('input');
+        if (inp) inp.value = res.amount > 0 ? res.amount : '';
+      }
+      delete budgetState.dirty[key];
+      cell.classList.remove('dirty');
+      saved++;
+    }).catch(() => { failed++; });
+  }));
+
+  updateBudgetSums();
+  updateBudgetFooter();
+  btn.disabled = false;
+  btn.textContent = 'Spara ändringar';
+
+  if (failed > 0) {
+    setStatus(`${saved} sparade, ${failed} misslyckades.`, 'error');
+  } else {
+    setStatus(`${saved} budgetvärden sparade.`, 'ok');
+  }
+}
+
+function discardAllDirty() {
+  Object.keys(budgetState.dirty).forEach(key => {
+    const cell = document.querySelector(`.budget-cell[data-key="${key}"]`);
+    if (cell) {
+      const orig = budgetState.limits[key];
+      const inp  = cell.querySelector('input');
+      if (inp) inp.value = orig && orig.amount > 0 ? orig.amount : '';
+      cell.classList.remove('dirty');
+    }
+  });
+  budgetState.dirty = {};
+  updateBudgetSums();
+  updateBudgetFooter();
+}
+
+function _effectiveAmt(key) {
+  if (key in budgetState.dirty) return budgetState.dirty[key];
+  const lim = budgetState.limits[key];
+  return lim ? lim.amount : 0;
 }
 
 function updateBudgetSums() {
@@ -799,19 +874,13 @@ function updateBudgetSums() {
   let grandTotal = 0;
 
   budgets.forEach(b => {
-    const rowSum = months.reduce((s, m) => {
-      const lim = budgetState.limits[`${b.id}:${m.start}`];
-      return s + (lim ? lim.amount : 0);
-    }, 0);
+    const rowSum = months.reduce((s, m) => s + _effectiveAmt(`${b.id}:${m.start}`), 0);
     const el = document.getElementById(`row-sum-${b.id}`);
     if (el) el.textContent = rowSum > 0 ? formatAmount(rowSum) : '—';
   });
 
   months.forEach((m, mi) => {
-    const colSum = budgets.reduce((s, b) => {
-      const lim = budgetState.limits[`${b.id}:${m.start}`];
-      return s + (lim ? lim.amount : 0);
-    }, 0);
+    const colSum = budgets.reduce((s, b) => s + _effectiveAmt(`${b.id}:${m.start}`), 0);
     grandTotal += colSum;
     const el = document.getElementById(`col-sum-${mi}`);
     if (el) el.textContent = colSum > 0 ? formatAmount(colSum) : '—';
@@ -824,5 +893,15 @@ function updateBudgetSums() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 boot();
 </script>
+<div id="budget-footer" class="budget-footer hidden">
+  <span id="budget-dirty-count"></span>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-secondary btn-sm" onclick="discardAllDirty()">Ångra</button>
+    <button class="btn" style="background:#48bb78;color:#fff" id="btn-save-budget" onclick="saveAllDirty()">
+      Spara ändringar
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
