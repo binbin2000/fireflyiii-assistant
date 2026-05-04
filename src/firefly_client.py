@@ -143,6 +143,41 @@ class FireflyClient:
         return [{"id": b["id"], "name": b["attributes"]["name"]}
                 for b in data.get("data", []) if b["attributes"].get("active", True)]
 
+    def get_budget_limits(self, budget_id: str, start: str, end: str) -> list:
+        data = self._get(f"budgets/{budget_id}/limits", {"start": start, "end": end})
+        result = []
+        for item in data.get("data", []):
+            attrs = item.get("attributes", {})
+            result.append({
+                "id": item["id"],
+                "budget_id": str(attrs.get("budget_id", "")),
+                "start": (attrs.get("start") or "")[:10],
+                "end": (attrs.get("end") or "")[:10],
+                "amount": float(attrs.get("amount") or 0),
+                "currency_code": attrs.get("currency_code", ""),
+            })
+        return result
+
+    def create_budget_limit(self, budget_id: str, start: str, end: str, amount: float) -> dict:
+        data = self._post(f"budgets/{budget_id}/limits", {
+            "start": start, "end": end, "amount": str(amount), "period": "monthly",
+        })
+        item = data.get("data", {})
+        attrs = item.get("attributes", {})
+        return {"id": item.get("id"), "amount": float(attrs.get("amount") or 0)}
+
+    def update_budget_limit(self, limit_id: str, budget_id: str, start: str, end: str, amount: float) -> dict:
+        data = self._put(f"budget-limits/{limit_id}", {
+            "budget_id": int(budget_id), "start": start, "end": end,
+            "amount": str(amount), "period": "monthly",
+        })
+        item = data.get("data", {})
+        attrs = item.get("attributes", {})
+        return {"id": item.get("id"), "amount": float(attrs.get("amount") or 0)}
+
+    def delete_budget_limit(self, limit_id: str) -> None:
+        self._delete(f"budget-limits/{limit_id}")
+
     # ── Rules ─────────────────────────────────────────────────────────────────
 
     def get_rules(self) -> list:
