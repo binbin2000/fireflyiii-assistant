@@ -1,5 +1,6 @@
 """FastAPI application – runs on localhost, supports Traefik + Authelia."""
 
+import calendar
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -88,6 +89,13 @@ class CreateRulesReq(BaseModel):
 class ResolveDupReq(BaseModel):
     keep_group_id: str
     delete_group_id: str
+
+class BudgetLimitReq(BaseModel):
+    budget_id: str
+    start: str
+    end: str
+    amount: float
+    limit_id: Optional[str] = None
 
 
 # ── API ───────────────────────────────────────────────────────────────────────
@@ -258,6 +266,50 @@ def create_rules(req: CreateRulesReq):
         except Exception as e:
             errors.append({"group_id": gid, "error": str(e)})
     return {"created": created, "skipped": skipped, "errors": errors}
+
+
+def _next_12_months() -> list:
+    today = datetime.now().date()
+    months = []
+    for i in range(12):
+        m = (today.month - 1 + i) % 12 + 1
+        y = today.year + (today.month - 1 + i) // 12
+        last_day = calendar.monthrange(y, m)[1]
+        months.append({"start": f"{y:04d}-{m:02d}-01", "end": f"{y:04d}-{m:02d}-{last_day:02d}"})
+    return months
+
+@app.get("/api/budget-overview")
+def budget_overview():
+    fc = _client()
+    budgets = _S.get("budgets", [])
+    months = _next_12_months()
+    overall_start = months[0]["start"]
+    overall_end = months[-1]["end"]
+    limits: dict = {}
+    for budget in budgets:
+        try:
+            for lim in fc.get_budget_limits(budget["id"], overall_start, overall_end):
+                key = f"{budget['id']}:{lim['start']}"
+                limits[key] = {"limit_id": lim["id"], "amount": lim["amount"]}
+        except Exception:
+            pass
+    return {"budgets": budgets, "months": months, "limits": limits}
+
+@app.post("/api/budget-limits")
+def set_budget_limit(req: BudgetLimitReq):
+    fc = _client()
+    try:
+        if req.amount == 0:
+            if req.limit_id:
+                fc.delete_budget_limit(req.limit_id)
+            return {"ok": True, "deleted": True}
+        if req.limit_id:
+            result = fc.update_budget_limit(req.limit_id, req.budget_id, req.start, req.end, req.amount)
+        else:
+            result = fc.create_budget_limit(req.budget_id, req.start, req.end, req.amount)
+        return {"ok": True, "limit_id": result["id"], "amount": result["amount"]}
+    except Exception as e:
+        raise HTTPException(502, str(e))
 
 
 # ── Static / SPA ──────────────────────────────────────────────────────────────
