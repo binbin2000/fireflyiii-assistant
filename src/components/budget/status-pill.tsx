@@ -1,0 +1,23 @@
+import { cn } from "@/lib/utils";
+import type { BudgetHealth } from "@/lib/budget-types";
+
+const labels: Record<BudgetHealth, string> = {
+  good: "On track",
+  warning: "Watch",
+  danger: "Over",
+};
+
+export function StatusPill({ health }: { health: BudgetHealth }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center rounded-full px-2 text-xs font-medium",
+        health === "good" && "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+        health === "warning" && "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+        health === "danger" && "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+      )}
+    >
+      {labels[health]}
+    </span>
+  );
+}
