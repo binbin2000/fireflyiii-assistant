@@ -1,16 +1,33 @@
-FROM python:3.12-slim
+FROM node:22-alpine AS base
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
 
+FROM base AS deps
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine AS runner
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-COPY src/ ./src/
-COPY main.py .
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
 
-RUN useradd -m -u 1000 app && chown -R app /app
-USER app
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-EXPOSE 8000
+USER nextjs
 
-CMD ["python", "main.py", "--no-browser", "--host", "0.0.0.0"]
+EXPOSE 3000
+
+CMD ["node", "server.js"]
