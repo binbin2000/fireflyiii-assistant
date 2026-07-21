@@ -13,6 +13,37 @@ FIREFLY_ACCESS_TOKEN=your-personal-access-token
 
 Budget data is loaded through the server route at `/api/budgets/overview`. Planned budget edits are saved through `/api/budgets/limits`, which writes budget limits back to Firefly III.
 
+## Authentication (OIDC)
+
+By default the app has no login wall. To require sign-in through an OIDC provider (Authelia, Keycloak, Authentik, or any standards-compliant IdP), set all of the following in `.env.local`:
+
+```bash
+AUTH_SECRET=your-generated-secret   # e.g. `openssl rand -base64 33`
+OIDC_ISSUER=https://auth.example.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+```
+
+Register `<your-app-url>/api/auth/callback/oidc` as the redirect URI on the IdP side.
+
+Optional variables:
+
+```bash
+AUTH_TRUST_HOST=true                # required when running behind a reverse proxy
+AUTH_URL=                           # canonical external origin, if it can't be derived from proxy headers
+OIDC_PROVIDER_NAME=Single Sign-On   # label shown on the login button
+OIDC_GROUPS_CLAIM=groups            # claim carrying group membership
+OIDC_REQUIRED_GROUP=firefly_users   # only members of this group may sign in; leave unset to allow any authenticated user
+```
+
+Behavior by configuration state:
+
+- **Unset** (none of `AUTH_SECRET`/`OIDC_ISSUER`/`OIDC_CLIENT_ID`/`OIDC_CLIENT_SECRET` set): the app runs open, exactly as without this feature.
+- **Partially set**: treated as a misconfiguration — every route is blocked and `/login` shows an error, since a half-configured login wall is more dangerous than an open app.
+- **Fully set**: every page and API route requires a signed-in session. If `OIDC_REQUIRED_GROUP` is set, the signed-in account must also carry that value in the configured groups claim, or sign-in is rejected.
+
+Signing out clears only this app's session cookie; it does not end the session at the IdP.
+
 ## Local analysis with Ollama
 
 The budget cockpit can send aggregated monthly budget totals to a local Ollama model. Raw Firefly credentials are never sent to Ollama, and model output is treated as a draft that must be reviewed before an existing budget amount is changed. New category ideas are displayed but are not created automatically.
