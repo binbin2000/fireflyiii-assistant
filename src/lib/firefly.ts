@@ -1,5 +1,7 @@
 import type { BudgetOverview, BudgetRow } from "./budget-types";
 import { getDemoBudgetOverview } from "./demo-budget-data";
+import { getDemoTransactionsOverview } from "./demo-transactions-data";
+import type { TransactionSplit, TransactionsOverview } from "./transaction-types";
 
 type FireflyList<T> = {
   data: T[];
@@ -68,6 +70,39 @@ function getBudgetCurrency(budget: FireflyBudget, limits: FireflyBudgetLimit[]) 
 
   return { currencyCode, currencySymbol };
 }
+
+type FireflyTransactionSplit = {
+  transaction_journal_id: string;
+  description: string;
+  amount: string;
+  currency_code?: string;
+  date: string;
+  category_id?: string | null;
+  category_name?: string | null;
+  tags?: string[] | null;
+  source_name?: string | null;
+  destination_name?: string | null;
+};
+
+type FireflyTransactionGroup = {
+  id: string;
+  attributes: {
+    transactions: FireflyTransactionSplit[];
+  };
+};
+
+type FireflyCategory = {
+  id: string;
+  attributes: {
+    name: string;
+  };
+};
+
+type FireflyTag = {
+  attributes: {
+    tag: string;
+  };
+};
 
 function getConfig() {
   const baseUrl = process.env.FIREFLY_BASE_URL?.replace(/\/$/, "");
@@ -222,6 +257,96 @@ export async function saveBudgetLimit(input: {
 
   if (!response.ok) {
     throw new Error(`Unable to save budget limit: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+function needsReview(split: FireflyTransactionSplit) {
+  return !split.category_id || !split.tags || split.tags.length === 0;
+}
+
+export async function getTransactionsNeedingReview(limit = 100): Promise<TransactionsOverview> {
+  if (!getConfig()) {
+    return getDemoTransactionsOverview();
+  }
+
+  const [groups, categories, tags] = await Promise.all([
+    fetchAll<FireflyTransactionGroup>("/v1/transactions?limit=200"),
+    fetchAll<FireflyCategory>("/v1/categories?limit=200"),
+    fetchAll<FireflyTag>("/v1/tags?limit=200"),
+  ]);
+
+  const transactions: TransactionSplit[] = groups
+    .flatMap((group) =>
+      group.attributes.transactions
+        .filter(needsReview)
+        .map((split) => ({
+          transactionId: group.id,
+          splitId: split.transaction_journal_id,
+          description: split.description,
+          amount: Math.abs(Number.parseFloat(split.amount) || 0),
+          currencyCode: split.currency_code ?? "USD",
+          date: split.date.slice(0, 10),
+          sourceName: split.source_name ?? "Unknown",
+          destinationName: split.destination_name ?? "Unknown",
+          category: null,
+          tags: [],
+        })),
+    )
+    .slice(0, limit);
+
+  return {
+    transactions,
+    categories: categories.map((category) => ({ id: category.id, name: category.attributes.name })),
+    knownTags: tags.map((tag) => tag.attributes.tag).filter(Boolean),
+    source: "firefly",
+  };
+}
+
+export async function applyTransactionTags(input: {
+  transactionId: string;
+  splitId: string;
+  categoryName?: string;
+  tags: string[];
+}) {
+  const config = getConfig();
+
+  if (!config) {
+    return { source: "demo" as const };
+  }
+
+  const group = await fireflyFetch<{ data: FireflyTransactionGroup }>(
+    `/v1/transactions/${input.transactionId}`,
+  ).then((body) => body.data);
+  const split = group.attributes.transactions.find(
+    (item) => item.transaction_journal_id === input.splitId,
+  );
+
+  if (!split) {
+    throw new Error("Transaction split not found");
+  }
+
+  const response = await fetch(`${config.baseUrl}/api/v1/transactions/${input.transactionId}`, {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${config.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      transactions: [
+        {
+          transaction_journal_id: input.splitId,
+          category_name: input.categoryName ?? split.category_name ?? undefined,
+          tags: input.tags,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Unable to save transaction: ${response.status} ${response.statusText}`);
   }
 
   return response.json();

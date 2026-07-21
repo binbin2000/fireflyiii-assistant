@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { CalendarDays, CircleDot, Redo2, RefreshCcw, Undo2 } from "lucide-react";
+import { AppNav } from "@/components/app-nav";
 import type { BudgetOverview } from "@/lib/budget-types";
 import { cloneOverview } from "@/lib/budget-math";
 import type { BudgetProposal } from "@/lib/ollama-types";
@@ -428,6 +429,7 @@ export function BudgetCockpitPage({ initialOverview }: { initialOverview: Budget
           </div>
 
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
+            <AppNav />
             <div className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-600">
               <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
               {activeMonth.label} {overview.year}
