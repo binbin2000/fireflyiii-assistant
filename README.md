@@ -34,6 +34,10 @@ OLLAMA_TIMEOUT_MS=120000
 
 Open the **Local economy analyst** panel to run a full review, request budget drafts, or focus on savings ideas. The server uses Ollama structured outputs and validates the response before returning it to the browser.
 
+## Transaction tagging
+
+The **Transactions** page (linked from the top nav) lists Firefly III transactions that are missing a category or tags. The **Transaction tagging assistant** sends those transactions to the same local Ollama model, which suggests a category and a few short tags for each one. Suggestions are drafts: nothing is written back to Firefly III until you review and apply a suggestion for that specific transaction.
+
 ## Docker
 
 Run the app as a single container with Docker Compose:

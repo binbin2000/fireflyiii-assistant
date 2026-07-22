@@ -53,3 +53,18 @@ export type OllamaStatus = {
   installedModels: string[];
   message?: string;
 };
+
+export type TransactionSuggestion = {
+  transactionId: string;
+  splitId: string;
+  suggestedCategory: string;
+  suggestedTags: string[];
+  confidence: AnalysisConfidence;
+  reason: string;
+};
+
+export type TransactionCategorizationResponse = {
+  model: string;
+  generatedAt: string;
+  suggestions: TransactionSuggestion[];
+};
